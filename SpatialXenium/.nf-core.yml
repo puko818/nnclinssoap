@@ -1,0 +1,16 @@
+bump_version: null
+lint: {}
+nf_core_version: 3.0.2
+org_path: null
+repository_type: pipeline
+template:
+  author: Martin E. Garcia Sola
+  description: Pipeline to process spatial transcriptomics data for the Xenium Plataform
+  force: true
+  is_nfcore: true
+  name: spatialxenium
+  org: nf-core
+  outdir: .
+  skip_features: []
+  version: 0.0.1dev
+update: null

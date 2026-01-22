@@ -1,0 +1,13 @@
+biocompute:
+  object_id: "bco-123e4567-e89b-12d3-a456-426614174000"
+  spec_version: "https://w3id.org/ieee/ieee-2791-schema/2791object.json"
+  etag: "c5e1a884b5a44a06beec87b8f5c0ade7"
+  usability: |
+    Single cell RNA-seq pipeline to process data and generate an integrated Seurat object. 
+  extension: |
+    Biocompute object version 1.0
+
+steps:
+   - name: "Step 1: Run sc workflow"
+     paths:
+      - "../R/preprocessing_workflow.R"

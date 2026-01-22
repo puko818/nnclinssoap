@@ -1,0 +1,28 @@
+Bootstrap: docker
+From: python:3.11-slim
+
+%post
+    echo "======================================"
+    echo "Installing system packages and Python packages for QC report"
+    echo "======================================"
+    apt-get update && apt-get install -y procps && rm -rf /var/lib/apt/lists/*
+    pip install --no-cache-dir fpdf2
+    echo "✓ System packages and fpdf2 installed successfully"
+
+%environment
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+
+%labels
+    Author zemw
+    Email zemw@novonordisk.com
+    Version 1.0
+    Description Python 3.11 with fpdf2 for QC report generation
+
+%help
+    QC Report Environment (Python 3.11, fpdf2)
+    
+    Purpose: Generate PDF QC reports from PNG plots
+    
+    Usage:
+        apptainer exec qc-report.sif python3 generate_report.py --plots file1.png --output report.pdf

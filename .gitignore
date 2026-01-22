@@ -1,0 +1,41 @@
+# Container images (large binary files)
+containers/*.sif
+
+# Build logs
+logs/
+*.log
+*.out
+*.err
+
+# Test data (downloaded from 10x Genomics)
+test_data/
+*.zip
+
+# R temporary files
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# Python temporary files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Temporary and cache files
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Output directories
+results/
+output/
+work/
+SpatialXenium/test_results/
+
+# Nextflow work directories
+.nextflow*
+work/

@@ -1,0 +1,48 @@
+---
+# Preprocessing workflow
+#Input data
+matrix_barcode_feats: false
+h5_filtered: true
+h5_raw_filtered: false
+modality: true
+modality_type: "Gene Expression"
+
+# Parameters
+DoEmptyDrop: true
+FDR_cutoff_EmptyDrop: 0.01
+SeuratProjectName: "Test"
+nFeatures_max: 5000
+nFeatures_min: 500
+nCells_cutoff: 10
+percentMT_cutoff: 10
+cluster_resolution: 0.6
+
+genes_of_interest:
+  - MYH11
+  - NPHS1
+  - CD3D
+  - UMOD
+  - COL1A2
+  - CCL3
+  - IL1RL1
+ 
+DoIntegration: true
+integration_method: "harmony"
+rpca_anchors_features: 
+  - 2
+  - 3
+  
+# Input / Output Paths
+ManifestPath: "configs/read_samples.txt"
+QCPath: "output/qc"
+SeuratPath: "output/seurat_object.rds"
+
+# Cell annotation
+CellAnnotationPath: "output/cell_annotation"
+annotation_method: "Azimuth"
+singleR_ref: "dice"
+azimuth_ref: "pbmcref"
+
+# Differential expresion analysis
+DEPath: "output/de_analysis"
+de_annotation: "predicted.celltype.l1"

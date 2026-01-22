@@ -1,0 +1,17 @@
+biocompute:
+  object_id: "bco-123e4567-e89b-12d3-a456-426614174000_2"
+  spec_version: "https://w3id.org/ieee/ieee-2791-schema/2791object.json"
+  etag: "c5e1a884b5a44a06beec87b8f5c0ade7_2"
+  usability: |
+    Single cell RNA-seq pipeline to annotate Seurat object and run differential expreesion analysis 
+  extension: |
+    Biocompute object version 1.0
+
+steps:
+   - name: "Step 1: Run cell type annotation"
+     paths:
+      - "../R/cell_annotation.R"
+   - name: "Step 2: Run DE analysis"
+     paths:
+      - "../R/de_analysis.R"
+      

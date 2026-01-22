@@ -1,0 +1,311 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/nf-core/spatialxenium/master/nextflow_schema.json",
+  "title": "nf-core/spatialxenium pipeline parameters",
+  "description": "Pipeline to process spatial transcriptomics data for the Xenium Platform",
+  "type": "object",
+  "$defs": {
+    "input_output_options": {
+      "title": "Input/output options",
+      "type": "object",
+      "fa_icon": "fas fa-terminal",
+      "description": "Define where the pipeline should find input data and save output data.",
+      "required": [
+        "input",
+        "outdir"
+      ],
+      "properties": {
+        "input": {
+          "type": "string",
+          "format": "file-path",
+          "exists": true,
+          "schema": "assets/schema_input.json",
+          "mimetype": "text/csv",
+          "pattern": "^\\S+\\.csv$",
+          "description": "Path to comma-separated file containing information about the samples in the experiment.",
+          "help_text": "You will need to create a design file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It must be a comma-separated file with 3 columns (and a header).",
+          "fa_icon": "fas fa-file-csv"
+        },
+        "outdir": {
+          "type": "string",
+          "format": "directory-path",
+          "description": "The output directory where the results will be saved. You have to use absolute paths to storage on Cloud infrastructure.",
+          "fa_icon": "fas fa-folder-open"
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address for completion summary.",
+          "fa_icon": "fas fa-envelope",
+          "pattern": "^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,5})$"
+        },
+        "multiqc_title": {
+          "type": "string",
+          "description": "MultiQC report title. Printed as page header, used for filename if not otherwise specified.",
+          "fa_icon": "fas fa-file-signature"
+        }
+      }
+    },
+    "institutional_config_options": {
+      "title": "Institutional config options",
+      "type": "object",
+      "fa_icon": "fas fa-university",
+      "description": "Parameters used to describe centralised config profiles. These should not be edited.",
+      "properties": {
+        "custom_config_version": {
+          "type": "string",
+          "description": "Git commit id for Institutional configs.",
+          "default": "master",
+          "hidden": true,
+          "fa_icon": "fas fa-users-cog"
+        },
+        "custom_config_base": {
+          "type": "string",
+          "description": "Base directory for Institutional configs.",
+          "default": "https://raw.githubusercontent.com/nf-core/configs/master",
+          "hidden": true,
+          "fa_icon": "fas fa-users-cog"
+        },
+        "config_profile_name": {
+          "type": "string",
+          "description": "Institutional config name.",
+          "hidden": true,
+          "fa_icon": "fas fa-users-cog"
+        },
+        "config_profile_description": {
+          "type": "string",
+          "description": "Institutional config description.",
+          "hidden": true,
+          "fa_icon": "fas fa-users-cog"
+        },
+        "config_profile_contact": {
+          "type": "string",
+          "description": "Institutional config contact information.",
+          "hidden": true,
+          "fa_icon": "fas fa-users-cog"
+        },
+        "config_profile_url": {
+          "type": "string",
+          "description": "Institutional config URL link.",
+          "hidden": true,
+          "fa_icon": "fas fa-users-cog"
+        }
+      }
+    },
+    "generic_options": {
+      "title": "Generic options",
+      "type": "object",
+      "fa_icon": "fas fa-file-import",
+      "description": "Less common options for the pipeline, typically set in a config file.",
+      "properties": {
+        "version": {
+          "type": "boolean",
+          "description": "Display version and exit.",
+          "fa_icon": "fas fa-question-circle",
+          "hidden": true
+        },
+        "publish_dir_mode": {
+          "type": "string",
+          "default": "copy",
+          "description": "Method used to save pipeline results to output directory.",
+          "fa_icon": "fas fa-copy",
+          "enum": [
+            "symlink",
+            "rellink",
+            "link",
+            "copy",
+            "copyNoFollow",
+            "move"
+          ],
+          "hidden": true
+        },
+        "email_on_fail": {
+          "type": "string",
+          "description": "Email address for completion summary, only when pipeline fails.",
+          "fa_icon": "fas fa-exclamation-triangle",
+          "pattern": "^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,5})$",
+          "hidden": true
+        },
+        "plaintext_email": {
+          "type": "boolean",
+          "description": "Send plain-text email instead of HTML.",
+          "fa_icon": "fas fa-remove-format",
+          "hidden": true
+        },
+        "max_multiqc_email_size": {
+          "type": "string",
+          "description": "File size limit when attaching MultiQC reports to summary emails.",
+          "pattern": "^\\d+(\\.\\d+)?\\.?\\s*(K|M|G|T)?B$",
+          "default": "25.MB",
+          "fa_icon": "fas fa-file-upload",
+          "hidden": true
+        },
+        "monochrome_logs": {
+          "type": "boolean",
+          "description": "Do not use coloured log outputs.",
+          "fa_icon": "fas fa-palette",
+          "hidden": true
+        },
+        "hook_url": {
+          "type": "string",
+          "description": "Incoming hook URL for messaging service",
+          "fa_icon": "fas fa-people-group",
+          "hidden": true
+        },
+        "multiqc_config": {
+          "type": "string",
+          "format": "file-path",
+          "description": "Custom config file to supply to MultiQC.",
+          "fa_icon": "fas fa-cog",
+          "hidden": true
+        },
+        "multiqc_logo": {
+          "type": "string",
+          "description": "Custom logo file to supply to MultiQC. File name must also be set in the MultiQC config file.",
+          "fa_icon": "fas fa-image",
+          "hidden": true
+        },
+        "multiqc_methods_description": {
+          "type": "string",
+          "description": "Custom MultiQC yaml file containing HTML including a methods description.",
+          "fa_icon": "fas fa-cog"
+        },
+        "validate_params": {
+          "type": "boolean",
+          "description": "Boolean whether to validate parameters against the schema at runtime.",
+          "default": true,
+          "fa_icon": "fas fa-check-square",
+          "hidden": true
+        },
+        "pipelines_testdata_base_path": {
+          "type": "string",
+          "fa_icon": "far fa-check-circle",
+          "description": "Base URL or local path to location of pipeline test dataset files.",
+          "default": "https://raw.githubusercontent.com/nf-core/test-datasets/",
+          "hidden": true
+        }
+      }
+    },
+    "analysis_options": {
+      "title": "Analysis parameters",
+      "type": "object",
+      "fa_icon": "fas fa-cogs",
+      "description": "Parameters to customize the pipeline's analysis behavior.",
+      "properties": {
+        "genes": {
+          "type": "string",
+          "format": "file-path",
+          "description": "Path to the file containing the list of genes to be used in the analysis.",
+          "default": "/path/to/genes.txt",
+          "fa_icon": "fas fa-file"
+        },
+        "min_reads_per_cell": {
+          "type": "integer",
+          "description": "Minimum read count filter to remove low expressing cells.",
+          "default": 10,
+          "fa_icon": "fas fa-filter"
+        },
+        "max_reads_per_cell": {
+          "type": "integer",
+          "description": "Maximum read count filter to remove high expressing cells.",
+          "default": 1000000,
+          "fa_icon": "fas fa-filter"
+        },
+        "max_control_prop_per_cell": {
+          "type": "number",
+          "description": "Maximum proportion of control probes (or control codewords) per cell.",
+          "default": 1.0,
+          "fa_icon": "fas fa-balance-scale"
+        },
+        "n_highly_var_genes": {
+          "type": "integer",
+          "description": "Number of highly variable genes to select in the Seurat `FindVariableFeatures` step.",
+          "default": 1000,
+          "fa_icon": "fas fa-chart-line"
+        },
+        "reference_rds": {
+          "type": "string",
+          "format": "file-path",
+          "description": "Path to RDS object of single-cell RNA-seq data for cell label transfer. If not provided, no label transfer is performed.",
+          "default": "NONE",
+          "fa_icon": "fas fa-database"
+        },
+        "single_cell_label_col": {
+          "type": "string",
+          "description": "Column in the single-cell RDS to use for label transfer.",
+          "default": "cell_type",
+          "fa_icon": "fas fa-tags"
+        },
+        "min_celltype_probability": {
+          "type": "number",
+          "description": "Minimum probability for cell type assignment during label transfer.",
+          "default": 0.5,
+          "fa_icon": "fas fa-percentage"
+        },
+        "generic_name": {
+          "type": "boolean",
+          "description": "Use a generic name for the Xenium_Seurat_Object.rds file.",
+          "default": false,
+          "fa_icon": "fas fa-file"
+        },
+        "future_mem_limit": {
+          "type": ["number","string"],
+          "description": "Max memory (in bytes) for R's `future` package, e.g., 8e9 = 8GB.",
+          "default": 8000000000,
+          "fa_icon": "fas fa-memory"
+        },
+        "validationFailUnrecognisedParams": {
+          "type": "boolean",
+          "description": "Allow or disallow unrecognised parameters in pipeline. If false, unrecognised params raise only a warning.",
+          "default": false,
+          "fa_icon": "fas fa-bug",
+          "hidden": true
+        },
+        "validation-fail-unrecognised-params": {
+          "type": "boolean",
+          "description": "Alias for `validationFailUnrecognisedParams` (provided for cross-version compatibility).",
+          "default": false,
+          "fa_icon": "fas fa-bug",
+          "hidden": true
+        },
+        "max_memory": {
+          "type": "string",
+          "description": "Maximum memory available to Nextflow, e.g. '512.GB'.",
+          "default": "512.GB",
+          "fa_icon": "fas fa-memory"
+        },
+        "max_cpus": {
+          "type": "integer",
+          "description": "Maximum CPU cores available to Nextflow.",
+          "default": 64,
+          "fa_icon": "fas fa-microchip"
+        },
+        "max_time": {
+          "type": "string",
+          "description": "Maximum time limit for pipeline processes, e.g. '240.h'.",
+          "default": "240.h",
+          "fa_icon": "far fa-clock"
+        },
+        "genomes": {
+          "type": "boolean",
+          "description": "Ignore reference genome param (not used in this pipeline). Added to avoid warnings when set externally.",
+          "default": false,
+          "hidden": true
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "#/$defs/input_output_options"
+    },
+    {
+      "$ref": "#/$defs/institutional_config_options"
+    },
+    {
+      "$ref": "#/$defs/generic_options"
+    },
+    {
+      "$ref": "#/$defs/analysis_options"
+    }
+  ]
+}

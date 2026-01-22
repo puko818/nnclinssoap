@@ -1,0 +1,197 @@
+Bootstrap: docker
+From: rocker/r-ver:4.5.2
+
+%labels
+    maintainer zemw@novonordisk.com
+    description R environment for scRNA-seq analysis workflow with Azimuth, SingleR, Signac, and differential expression
+    version 4.5.2
+
+%post
+    # Install system dependencies
+    apt-get update && apt-get install -y -qq \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        libxml2-dev \
+        libgit2-dev \
+        libfontconfig1-dev \
+        libharfbuzz-dev \
+        libfribidi-dev \
+        libfreetype6-dev \
+        libpng-dev \
+        libtiff5-dev \
+        libjpeg-dev \
+        libhdf5-dev \
+        libudunits2-dev \
+        libgdal-dev \
+        libgeos-dev \
+        libproj-dev \
+        libfftw3-dev \
+        libgsl-dev \
+        libcairo2-dev \
+        librsvg2-dev \
+        libprotobuf-dev \
+        protobuf-compiler \
+        pkg-config \
+        cmake \
+        git \
+        wget \
+        build-essential \
+        libnode-dev \
+        zlib1g-dev \
+        libglpk-dev \
+        && rm -rf /var/lib/apt/lists/*
+
+    # Install devtools, remotes, and BiocManager first
+    R -e "install.packages(c('devtools', 'remotes', 'BiocManager'), repos='https://cloud.r-project.org/', dependencies=TRUE)"
+
+    # Set Bioconductor version
+    R -e "BiocManager::install(version='3.22', ask=FALSE)"
+
+    # Install essential Rcpp packages first
+    Rscript -e " \
+        cat('Installing Rcpp packages...\n'); \
+        rcpp_packages <- c('Rcpp', 'RcppArmadillo', 'RcppEigen', 'RcppAnnoy', 'RcppHNSW', 'RcppProgress', 'RcppRoll', 'RcppTOML', 'RcppML'); \
+        install.packages(rcpp_packages, repos='https://cloud.r-project.org/', dependencies=TRUE); \
+        cat('Rcpp packages installed\n'); \
+        "
+
+    # Install Matrix package (required by many downstream packages)
+    Rscript -e " \
+        cat('Installing Matrix package...\n'); \
+        install.packages('Matrix', repos='https://cloud.r-project.org/', dependencies=TRUE); \
+        cat('Matrix package installed\n'); \
+        "
+
+    # Install tidyverse and data manipulation packages
+    Rscript -e " \
+        cat('Installing tidyverse and data packages...\n'); \
+        data_packages <- c( \
+            'dplyr', 'tidyr', 'tibble', 'purrr', 'stringr', 'ggplot2', 'readr', 'readxl', \
+            'data.table', 'reshape2', 'yaml', 'magrittr' \
+        ); \
+        install.packages(data_packages, repos='https://cloud.r-project.org/', dependencies=TRUE); \
+        cat('Data manipulation packages installed\n'); \
+        "
+
+    # Install visualization packages
+    Rscript -e " \
+        cat('Installing visualization packages...\n'); \
+        viz_packages <- c( \
+            'ggrepel', 'ggridges', 'ggpubr', 'ggthemes', 'cowplot', 'patchwork', \
+            'scales', 'viridis', 'viridisLite', 'RColorBrewer', 'Cairo', \
+            'pheatmap', 'DT' \
+        ); \
+        install.packages(viz_packages, repos='https://cloud.r-project.org/', dependencies=TRUE); \
+        cat('Visualization packages installed\n'); \
+        "
+
+    # Install HDF5 and file I/O packages
+    Rscript -e " \
+        cat('Installing HDF5 and file I/O packages...\n'); \
+        BiocManager::install(c('hdf5r', 'rhdf5', 'Rhdf5lib', 'HDF5Array'), ask=FALSE); \
+        cat('HDF5 packages installed\n'); \
+        "
+
+    # Install Bioconductor core packages
+    Rscript -e " \
+        cat('Installing Bioconductor core packages...\n'); \
+        BiocManager::install(c( \
+            'BiocGenerics', 'S4Vectors', 'IRanges', 'GenomeInfoDb', \
+            'GenomicRanges', 'GenomicFeatures', 'GenomicAlignments', \
+            'Biobase', 'SummarizedExperiment', 'SingleCellExperiment', \
+            'DelayedArray', 'DelayedMatrixStats', 'BiocNeighbors', \
+            'BiocSingular', 'beachmat', 'ScaledMatrix', 'BiocFileCache', \
+            'AnnotationHub', 'ExperimentHub' \
+        ), ask=FALSE); \
+        cat('Bioconductor core packages installed\n'); \
+        "
+
+    # Install annotation and genome packages
+    Rscript -e " \
+        cat('Installing annotation packages...\n'); \
+        BiocManager::install(c( \
+            'org.Hs.eg.db', 'AnnotationDbi', 'AnnotationFilter', 'GO.db', 'KEGGREST', \
+            'BSgenome', 'BSgenome.Hsapiens.UCSC.hg38', \
+            'EnsDb.Hsapiens.v86', 'JASPAR2020' \
+        ), ask=FALSE); \
+        cat('Annotation packages installed\n'); \
+        "
+
+    # Install analysis packages for dimensionality reduction and clustering
+    Rscript -e " \
+        cat('Installing analysis packages...\n'); \
+        analysis_packages <- c( \
+            'irlba', 'RSpectra', 'Rtsne', 'uwot', 'FNN', 'RANN', \
+            'igraph', 'leiden', 'future', 'future.apply', 'progressr', \
+            'parallel' \
+        ); \
+        install.packages(analysis_packages, repos='https://cloud.r-project.org/', dependencies=TRUE); \
+        cat('Analysis packages installed\n'); \
+        "
+
+    # Install Seurat and SeuratObject
+    Rscript -e " \
+        cat('Installing Seurat ecosystem...\n'); \
+        install.packages(c('SeuratObject', 'Seurat', 'sctransform'), repos='https://cloud.r-project.org/', dependencies=TRUE); \
+        cat('Seurat installed successfully\n'); \
+        "
+
+    # Install GitHub packages with retry logic
+    Rscript -e "install_github_with_retry <- function(repo, max_attempts = 5, wait_time = 10, ...) { for (attempt in 1:max_attempts) { result <- tryCatch({ cat(sprintf('Attempt %d/%d: Installing %s...\n', attempt, max_attempts, repo)); Sys.sleep(wait_time); remotes::install_github(repo, force = FALSE, upgrade = 'never', ...); cat(sprintf('Successfully installed %s\n', repo)); return(TRUE); }, error = function(e) { cat(sprintf('Attempt %d failed: %s\n', attempt, e\$message)); if (attempt < max_attempts) { cat(sprintf('Waiting %d seconds before retry...\n', wait_time * attempt)); Sys.sleep(wait_time * attempt); }; return(FALSE); }); if (result) break; }; if (!result) stop(sprintf('Failed to install %s after %d attempts', repo, max_attempts)); }; cat('Installing GitHub packages with retry logic...\n'); install_github_with_retry('satijalab/seurat-data'); install_github_with_retry('mojaveazure/seurat-disk'); install_github_with_retry('satijalab/azimuth', ref='master'); cat('All GitHub packages installed successfully\n')"
+
+    # Install SingleR and celldex
+    Rscript -e " \
+        cat('Installing SingleR and celldex...\n'); \
+        BiocManager::install(c('SingleR', 'celldex'), ask=FALSE); \
+        cat('SingleR and celldex installed\n'); \
+        "
+
+    # Install Signac for multimodal analysis
+    Rscript -e " \
+        cat('Installing Signac...\n'); \
+        install.packages('Signac', repos='https://cloud.r-project.org/', dependencies=TRUE); \
+        cat('Signac installed\n'); \
+        "
+
+    # Install differential expression packages
+    Rscript -e " \
+        cat('Installing differential expression packages...\n'); \
+        BiocManager::install(c('edgeR', 'limma', 'DESeq2'), ask=FALSE); \
+        cat('Differential expression packages installed\n'); \
+        "
+
+    # Install analysis-specific Bioconductor packages
+    Rscript -e " \
+        cat('Installing additional analysis packages...\n'); \
+        BiocManager::install(c( \
+            'DropletUtils', 'glmGamPoi', 'bluster', \
+            'DirichletMultinomial' \
+        ), ask=FALSE); \
+        cat('Additional analysis packages installed\n'); \
+        "
+
+    # Install SoupX
+    Rscript -e " \
+        cat('Installing SoupX...\n'); \
+        install.packages('SoupX', repos='https://cloud.r-project.org/', dependencies=TRUE); \
+        cat('SoupX installed\n'); \
+        "
+
+    # Install whirl for analysis workflows
+    Rscript -e " \
+        cat('Installing whirl...\n'); \
+        remotes::install_github('NovoNordisk-OpenSource/whirl'); \
+        cat('whirl installed\n'); \
+        "
+
+%environment
+    export LC_ALL=C
+    export PATH=/usr/local/bin:$PATH
+    export R_LIBS_USER=/usr/local/lib/R/site-library
+
+%runscript
+    exec R "$@"
+
+%startscript
+    R
+

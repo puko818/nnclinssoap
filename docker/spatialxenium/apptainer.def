@@ -1,0 +1,108 @@
+Bootstrap: docker
+From: rocker/r-ver:4.5.2
+
+%post
+    echo "======================================"
+    echo "Installing System Dependencies"
+    echo "======================================"
+    apt-get update && apt-get install -y \
+        libcurl4-openssl-dev libssl-dev libxml2-dev libgit2-dev \
+        libfontconfig1-dev libharfbuzz-dev libfribidi-dev libfreetype6-dev \
+        libpng-dev libtiff5-dev libjpeg-dev libhdf5-dev libudunits2-dev \
+        libgdal-dev libgeos-dev libproj-dev libfftw3-dev libgsl-dev \
+        libcairo2-dev librsvg2-dev libprotobuf-dev protobuf-compiler \
+        pkg-config cmake git wget build-essential libnode-dev \
+        && rm -rf /var/lib/apt/lists/*
+    
+    echo "✓ System dependencies installed"
+    
+    R -e "install.packages(c('devtools', 'remotes', 'BiocManager'), repos='https://cloud.r-project.org/', dependencies=TRUE)"
+    R -e "BiocManager::install(version='3.22', ask=FALSE)"
+    
+    # Install Rcpp packages
+    Rscript -e "cat('Installing Rcpp packages...\n'); \
+        rcpp_packages <- c('Rcpp', 'RcppArmadillo', 'RcppEigen', 'RcppAnnoy', 'RcppHNSW', 'RcppProgress', 'RcppTOML'); \
+        install.packages(rcpp_packages, repos='https://cloud.r-project.org/', dependencies=TRUE); \
+        cat('✓ Rcpp packages installed\n')"
+    
+    # Install Matrix and tidyverse
+    Rscript -e "cat('Installing Matrix...\n'); \
+        install.packages('Matrix', repos='https://cloud.r-project.org/', dependencies=TRUE); \
+        cat('✓ Matrix installed\n')"
+    
+    Rscript -e "cat('Installing data manipulation packages...\n'); \
+        data_packages <- c('dplyr', 'tidyr', 'tibble', 'purrr', 'stringr', 'ggplot2', 'data.table', 'reshape2', 'plyr'); \
+        install.packages(data_packages, repos='https://cloud.r-project.org/', dependencies=TRUE); \
+        cat('✓ Data packages installed\n')"
+    
+    # Install visualization
+    Rscript -e "cat('Installing visualization packages...\n'); \
+        viz_packages <- c('ggExtra', 'ggrepel', 'ggridges', 'cowplot', 'patchwork', 'scales', 'viridisLite', 'RColorBrewer', 'plotly', 'shiny', 'shinyjs'); \
+        install.packages(viz_packages, repos='https://cloud.r-project.org/', dependencies=TRUE); \
+        cat('✓ Visualization packages installed\n')"
+    
+    # Install spatial packages
+    Rscript -e "cat('Installing spatial analysis packages...\n'); \
+        spatial_packages <- c('sp', 'spatstat.data', 'spatstat.geom', 'spatstat.explore', 'spatstat.random', 'spatstat.sparse', 'spatstat.univar', 'spatstat.utils', 'deldir', 'polyclip'); \
+        install.packages(spatial_packages, repos='https://cloud.r-project.org/', dependencies=TRUE); \
+        cat('✓ Spatial packages installed\n')"
+    
+    # Install analysis packages
+    Rscript -e "cat('Installing analysis packages...\n'); \
+        analysis_packages <- c('argparser', 'arrow', 'fitdistrplus', 'ROCR', 'future', 'future.apply', 'progressr', 'pbapply', 'irlba', 'RSpectra', 'Rtsne', 'uwot', 'FNN', 'RANN', 'igraph', 'leiden'); \
+        install.packages(analysis_packages, repos='https://cloud.r-project.org/', dependencies=TRUE); \
+        cat('✓ Analysis packages installed\n')"
+    
+    # Install HDF5
+    Rscript -e "cat('Installing HDF5 packages...\n'); \
+        BiocManager::install(c('hdf5r', 'rhdf5', 'Rhdf5lib', 'HDF5Array'), ask=FALSE); \
+        cat('✓ HDF5 packages installed\n')"
+    
+    # Install Bioconductor packages
+    Rscript -e "cat('Installing Bioconductor core packages...\n'); \
+        BiocManager::install(c('BiocGenerics', 'S4Vectors', 'IRanges', 'GenomeInfoDb', 'GenomicRanges', 'Biobase', 'SummarizedExperiment', 'SingleCellExperiment', 'DelayedArray', 'org.Hs.eg.db'), ask=FALSE); \
+        cat('✓ Bioconductor packages installed\n')"
+    
+    # Install Seurat ecosystem
+    Rscript -e "cat('Installing Seurat ecosystem...\n'); \
+        install.packages(c('SeuratObject', 'Seurat', 'sctransform'), repos='https://cloud.r-project.org/', dependencies=TRUE); \
+        cat('✓ Seurat installed\n')"
+    
+    # Install presto from GitHub with retry
+    Rscript -e "cat('Installing presto from GitHub...\n'); \
+        for(i in 1:3) { \
+            tryCatch({ \
+                cat(sprintf('Attempt %d/3...\n', i)); \
+                Sys.sleep(10); \
+                remotes::install_github('immunogenomics/presto', force=FALSE, upgrade='never'); \
+                cat('✓ presto installed successfully\n'); \
+                break; \
+            }, error = function(e) { \
+                cat(sprintf('Attempt %d failed: %s\n', i, e\$message)); \
+                if(i < 3) Sys.sleep(30) else stop('Failed to install presto after 3 attempts'); \
+            }); \
+        }"
+    
+    echo "======================================"
+    echo "✓ All packages installed successfully"
+    echo "======================================"
+
+%environment
+    export LC_ALL=C
+    export PATH=/usr/local/bin:$PATH
+    export R_LIBS_USER=/usr/local/lib/R/site-library
+
+%labels
+    Author zemw
+    Email zemw@novonordisk.com
+    Version 4.5.2
+    Description Spatial Xenium workflow with presto, Seurat, argparser, arrow
+
+%help
+    Spatial Xenium Environment (R 4.5.2, Bioconductor 3.22)
+    Main packages: presto, Seurat 5.1, argparser, arrow, ggExtra, spatstat
+    
+    Purpose: Spatial transcriptomics analysis for Xenium platform
+    
+    Usage:
+        apptainer exec spatialxenium.sif Rscript your_script.R
