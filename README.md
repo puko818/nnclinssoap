@@ -288,7 +288,8 @@ If you use this pipeline in your research, please cite:
 
 ## License
 
-[License to be determined]
+Code - Apache License 2.0
+Documentation - CC BY 4.0
 
 ---
 
@@ -309,8 +310,4 @@ If you use this pipeline in your research, please cite:
 ---
 
 **Version:** 1.0  
-**Last Updated:** December 29, 2025
-
-# nnclinssoap
-# nnclinssoap
-# nnclinssoap
+**Last Updated:** January 23, 2026
