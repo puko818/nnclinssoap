@@ -19,49 +19,59 @@ nnclinssoap/
 ├── docker/                    # Container definitions (Dockerfiles & Apptainer .def)
 │   ├── preprocessing/         # QC, doublet detection, ambient RNA removal
 │   ├── analysis/              # Cell annotation, differential expression
-│   └── spatialxenium/        # Xenium-specific spatial analysis
+│   └── spatialxenium/         # Xenium-specific spatial analysis
+│   └── qc-report/             # QC reporting for SpatialXenium
 ├── containers/                # Built Singularity images (.sif files)
-├── SpatialXenium/            # Nextflow pipeline (nf-core style)
-├── scrnaseq/                 # R-based pipeline using whirl
-├── test_data/                # Test datasets (gitignored, auto-downloaded)
-└── tests/                    # Testing scripts and validation
+├── SpatialXenium/             # Nextflow pipeline (nf-core style)
+├── scrnaseq/                  # R-based pipeline using whirl
+├── test_data/                 # Test datasets (gitignored, auto-downloaded)
+└── tests/                     # Testing scripts and validation
 ```
 
 ---
 
-## Quick Start
+## Quick Start (Test case executed locally)
 
-### 1. Check Prerequisites
+### 1. Download Test Data
 ```bash
-./docker/check_build_prerequisites.sh
+./setup_test_data.sh
 ```
 
 ### 2. Build Containers
 ```bash
 cd docker
-sbatch build_all_images.sh  # SLURM
-# Or: bash build_all_images.sh  # Interactive
+./build_all_images.sh -v docker
 
 # Builds 4 containers: preprocessing, analysis, spatialxenium, qc-report
-# Total time: ~6-8 hours (parallelizable)
+# Total time: ~3-6 hours (parallelizable)
 ```
 
-### 3. Download Test Data
+### 3. Run sc/snRNA-seq Pipeline
 ```bash
-./setup_test_data.sh
+cd scrnaseq
+./run_preprocessing_containerized.sh
+./run_analysis_containerized.sh
 ```
 
-### 4. Run Pipeline
+### 4. Run SpatialXenium Pipeline
 ```bash
 cd SpatialXenium
-nextflow run main.nf -profile test,singularity --outdir test_results
+nextflow run main.nf -profile test,docker --outdir test_results
 ```
-
-**Full guide:** See [`docs/QUICKSTART.md`](docs/QUICKSTART.md)
 
 ---
 
 ## Pipelines
+
+### scrnaseq (R-based)
+
+**Purpose:** Flexible R workflow for single-cell analysis  
+**Framework:** whirl package  
+**Workflows:**
+- Preprocessing: QC, doublet detection, batch correction
+- Analysis: Cell annotation, differential expression
+
+**Documentation:** [`scrnaseq/README.md`](scrnaseq/README.md)
 
 ### SpatialXenium (Nextflow)
 
@@ -74,16 +84,6 @@ nextflow run main.nf -profile test,singularity --outdir test_results
 - Comprehensive QC reporting
 
 **Documentation:** [`SpatialXenium/README.md`](SpatialXenium/README.md)
-
-### scrnaseq (R-based)
-
-**Purpose:** Flexible R workflow for single-cell analysis  
-**Framework:** whirl package  
-**Workflows:**
-- Preprocessing: QC, doublet detection, batch correction
-- Analysis: Cell annotation, differential expression
-
-**Documentation:** [`scrnaseq/README.md`](scrnaseq/README.md)
 
 ---
 
@@ -125,22 +125,19 @@ nextflow run main.nf -profile test,singularity --outdir test_results
 |----------|-------------|
 | [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | One-page quick reference |
 | [`docs/TESTING_GUIDE.md`](docs/TESTING_GUIDE.md) | Complete testing procedures |
-| [`docs/EXECUTIVE_SUMMARY.md`](docs/EXECUTIVE_SUMMARY.md) | Project status and accomplishments |
-| [`docs/PR_SUMMARY.md`](docs/PR_SUMMARY.md) | Pull request summary and checklist |
 | [`docker/BUILD_GUIDE.md`](docker/BUILD_GUIDE.md) | Container build guide |
-| [`docs/DOCKER_TO_PIPELINE_INTEGRATION_ANALYSIS.md`](docs/DOCKER_TO_PIPELINE_INTEGRATION_ANALYSIS.md) | Technical analysis & architecture |
 
 ---
 
 ## Requirements
 
 ### System
-- Linux OS (tested on SLURM HPC)
-- 16+ GB RAM (32+ GB recommended)
-- 20+ GB disk space for containers and test data
+- Linux/Windows/Mac (tested on MacOS Tahoe 26.1 and SLURM HPC)
+- 18+ GB RAM (32+ GB recommended)
+- 30+ GB disk space for containers and test data
 
 ### Software
-- Apptainer/Singularity ≥3.8
+- Docker or Apptainer/Singularity ≥3.8
 - Nextflow ≥23.10.0
 - Standard Linux tools (wget/curl, unzip, tar)
 
@@ -231,15 +228,6 @@ results/
 
 ## Development
 
-### Repository is Publication-Ready
-
-All code and documentation designed for technical publication:
-- ✅ Portable paths (no hard-coded external dependencies)
-- ✅ Comprehensive documentation
-- ✅ Reproducible builds with version control
-- ✅ Test data auto-download
-- ✅ Validation and testing framework
-
 ### Contributing
 
 This is a technical research repository. For improvements:
@@ -272,7 +260,7 @@ tail SpatialXenium/.nextflow.log
 nextflow run main.nf -profile test,singularity -resume
 ```
 
-**Full troubleshooting:** See [`TESTING_GUIDE.md`](TESTING_GUIDE.md#common-issues-and-solutions)
+**Full troubleshooting:** See [`TESTING_GUIDE.md`](docker/TESTING_GUIDE.md#common-issues-and-solutions)
 
 ---
 
@@ -283,13 +271,14 @@ If you use this pipeline in your research, please cite:
 ```
 [Citation information to be added upon publication]
 ```
+Pre-print available at [bioRxiv](https://www.biorxiv.org/content/10.64898/2026.01.23.701261v1)
 
 ---
 
 ## License
 
-Code - Apache License 2.0
-Documentation - CC BY 4.0
+- Code - Apache License 2.0
+- Documentation - CC BY 4.0
 
 ---
 
@@ -310,4 +299,4 @@ Documentation - CC BY 4.0
 ---
 
 **Version:** 1.0  
-**Last Updated:** January 23, 2026
+**Last Updated:** February 4, 2026
