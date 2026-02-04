@@ -10,7 +10,7 @@
 
 ## Overview
 
-A comprehensive analysis framework for spatial transcriptomics data, with primary focus on 10x Genomics Xenium platform. The repository provides both Nextflow-based and R-based workflows for processing and analyzing spatial single-cell data.
+A comprehensive analysis framework for spatial transcriptomics data, with primary focus on 10x Genomics Xenium platform. The repository provides both Nextflow-based and R-based containerized workflows for processing and analyzing spatial single-cell data.
 
 ### Repository Structure
 
@@ -24,8 +24,8 @@ nnclinssoap/
 ├── containers/                # Built Singularity images (.sif files)
 ├── SpatialXenium/             # Nextflow pipeline (nf-core style)
 ├── scrnaseq/                  # R-based pipeline using whirl
-├── test_data/                 # Test datasets (gitignored, auto-downloaded)
-└── tests/                     # Testing scripts and validation
+├── tests/                     # Testing scripts and validation
+└── docs/                      # Documentation and guides
 ```
 
 ---
@@ -102,23 +102,6 @@ All R-based containers use **R 4.5.2** with **Bioconductor 3.22**
 
 ---
 
-## Testing
-
-### Quick Test
-```bash
-./test_spatialxenium_quick.sh
-```
-
-### Full Pipeline Test
-```bash
-cd SpatialXenium
-nextflow run main.nf -profile test,singularity --outdir test_results
-```
-
-**Testing guide:** [`docs/TESTING_GUIDE.md`](docs/TESTING_GUIDE.md)
-
----
-
 ## Documentation
 
 | Document | Description |
@@ -153,76 +136,6 @@ nextflow run main.nf -profile test,singularity --outdir test_results
 ### Optional Reference Data
 - Kidney reference: [Azimuth HubMAP](https://azimuth.hubmapconsortium.org/references/#Human%20-%20Kidney)
 - Additional datasets: [10x Genomics Dataset Explorer](https://www.10xgenomics.com/products/xenium-in-situ/dataset-explorer)
-
----
-
-## Usage Examples
-
-### Basic Xenium Processing
-```bash
-cd SpatialXenium
-nextflow run main.nf \
-    -profile singularity \
-    --input samplesheet.csv \
-    --outdir results
-```
-
-### With Reference-based Annotation
-```bash
-nextflow run main.nf \
-    -profile singularity \
-    --input samplesheet.csv \
-    --reference_rds kidney_reference.rds \
-    --single_cell_label_col "cell_type" \
-    --outdir results
-```
-
-### With Gene List for Feature Plots
-```bash
-nextflow run main.nf \
-    -profile singularity \
-    --input samplesheet.csv \
-    --genes genes.txt \
-    --outdir results
-```
-
----
-
-## Input Format
-
-### Samplesheet (CSV)
-```csv
-sample,xenium_path
-sample1,/path/to/xenium/output
-sample2,/path/to/xenium/output
-```
-
-### Gene List (TXT)
-```
-GENE1
-GENE2
-GENE3
-```
-
----
-
-## Output Structure
-
-```
-results/
-├── sample1/
-│   ├── seurat_xenium/
-│   │   ├── sample1_processed.rds      # Seurat object
-│   │   ├── QC_plots.png               # Quality control
-│   │   └── session_info.txt           # R session info
-│   └── label_transfer/                # If reference provided
-│       ├── sample1_labeled.rds
-│       └── celltype_predictions.csv
-└── pipeline_info/
-    ├── execution_report.html          # Resource usage
-    ├── execution_timeline.html        # Timeline
-    └── execution_trace.txt            # Detailed trace
-```
 
 ---
 
