@@ -93,10 +93,10 @@ All R-based containers use **R 4.5.2** with **Bioconductor 3.22**
 
 | Container | Purpose | Key Packages | Size |
 |-----------|---------|--------------|------|
-| **preprocessing** | QC & batch correction | Seurat, SoupX, scDblFinder, harmony | ~1.7 GB |
-| **analysis** | Annotation & DE | Azimuth, SingleR, edgeR, Signac | ~2.6 GB |
-| **spatialxenium** | Spatial analysis | presto, Seurat, argparser, arrow, spatstat | ~2.0 GB |
-| **qc-report** | QC PDF generation | Python 3.11, fpdf2 | ~62 MB |
+| **preprocessing** | QC & batch correction | Seurat, SoupX, scDblFinder, harmony | ~8.09 GB |
+| **analysis** | Annotation & DE | Azimuth, SingleR, edgeR, Signac | ~10.97 GB |
+| **spatialxenium** | Spatial analysis | presto, Seurat, argparser, arrow, spatstat | ~7.95 GB |
+| **qc-report** | QC PDF generation | Python 3.11, fpdf2 | ~0.3 GB |
 
 **Build documentation:** [`docker/BUILD_GUIDE.md`](docker/BUILD_GUIDE.md)
 
@@ -117,7 +117,7 @@ All R-based containers use **R 4.5.2** with **Bioconductor 3.22**
 ### System
 - Linux/Windows/Mac (tested on MacOS Tahoe 26.1 and SLURM HPC)
 - 18+ GB RAM (32+ GB recommended)
-- 30+ GB disk space for containers and test data
+- 40+ GB disk space for containers and test data
 
 ### Software
 - Docker or Apptainer/Singularity ≥3.8
@@ -129,6 +129,7 @@ All R-based containers use **R 4.5.2** with **Bioconductor 3.22**
 ## Data Sources
 
 ### Test Data (Auto-downloaded)
+- **scRNA-seq:** 4 single-cell h5 matrixes (10x Genomics)
 - **Non-diseased kidney:** Xenium V1 human kidney (10x Genomics)
 - **Cancer kidney:** Xenium V1 kidney cancer (10x Genomics)
 - **Total size:** ~6 GB
