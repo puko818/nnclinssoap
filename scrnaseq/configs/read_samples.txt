@@ -1,10 +1,9 @@
-key	filepath participant visit arm sex age 
-donor01-bl	test_data/donor1 donor01 bl placebo M 68
-donor01-eot	test_data/donor2 donor01 eot placebo M 68
-donor02-bl	test_data/donor3 donor02 bl treatment F 62
-donor02-eot	test_data/donor4 donor02 eot treatment F 62
-donor03-bl	test_data/donor1 donor03 bl placebo F 67
-donor03-eot	test_data/donor2 donor03 eot placebo F 67
-donor04-bl	test_data/donor3 donor04 bl treatment F 62
-donor04-eot	test_data/donor4 donor04 eot treatment F 62
-
+key	filepath	participant	visit	arm	sex	age
+donor01-bl	../test_data/donor1	donor01	bl	placebo	M	68
+donor01-eot	../test_data/donor2	donor01	eot	placebo	M	68
+donor02-bl	../test_data/donor3	donor02	bl	treatment	F	62
+donor02-eot	../test_data/donor4	donor02	eot	treatment	F	62
+donor03-bl	../test_data/donor1	donor03	bl	placebo	F	67
+donor03-eot	../test_data/donor2	donor03	eot	placebo	F	67
+donor04-bl	../test_data/donor3	donor04	bl	treatment	F	62
+donor04-eot	../test_data/donor4	donor04	eot	treatment	F	62

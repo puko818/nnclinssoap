@@ -1,0 +1,17 @@
+# Force LF line endings for all text files on all platforms
+* text=auto eol=lf
+
+# Explicit binary files — never touch line endings
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.gz binary
+*.h5 binary
+*.rds binary
+*.parquet binary
+*.tif binary
+*.zip binary
+*.sif binary
+*.snap binary
+*.zarr.zip binary

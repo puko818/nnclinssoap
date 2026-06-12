@@ -22,13 +22,14 @@ include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_spat
 workflow SPATIALXENIUM {
 
     take:
-    ch_samplesheet // channel: samplesheet read in from --input
+    ch_samplesheet   // channel: samplesheet read in from --input
+    ch_reference_rds // channel: annotated scRNAseq RDS for label transfer (value channel or empty)
+
     main:
 
     ch_versions = Channel.empty()
     ch_multiqc_files = Channel.empty()
     ch_genes = params.genes ? Channel.value(file(params.genes, checkIfExists: true)) : Channel.empty()
-    ch_reference = params.reference_rds ? Channel.value(file(params.reference_rds, checkIfExists: true)) : Channel.empty() 
 
     //
     // MODULE: Seurat Xenium script
@@ -38,12 +39,11 @@ workflow SPATIALXENIUM {
     )
     ch_xenium_rds = SEURAT_XENIUM.out.rds
 
-    if(params.reference_rds) {
-        LABEL_TRANSFER(
-            ch_xenium_rds,
-            ch_reference
-        )
-    }
+    // LABEL_TRANSFER only runs when ch_reference_rds emits an item (empty channel = skip)
+    LABEL_TRANSFER(
+        ch_xenium_rds,
+        ch_reference_rds
+    )
     
     if(params.genes) {
         PLOT_FEATURES (

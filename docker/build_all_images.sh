@@ -189,8 +189,8 @@ build_container() {
     fi
 }
 
-# Build all containers
-CONTAINERS=("preprocessing" "analysis" "spatialxenium" "qc-report")
+# Build all containers — base must be first as derived containers depend on it
+CONTAINERS=("base" "preprocessing" "analysis" "spatialxenium" "qc-report")
 FAILED_BUILDS=()
 
 for container in "${CONTAINERS[@]}"; do
@@ -233,19 +233,24 @@ cat >> "${IMAGE_OUTPUT}/VERSION_MANIFEST.txt" << EOF
 
 Image Details:
 --------------
+0. scrnaseq-base_${VERSION}.sif
+   - Purpose: Shared base — Seurat, common R packages, system dependencies
+   - Key packages: Seurat 5.1, tidyverse, Bioconductor core, HDF5
+   - Source: docker/base/
+
 1. scrnaseq-preprocessing_${VERSION}.sif
    - Purpose: Initial QC, doublet detection, ambient RNA removal
-   - Key packages: Seurat 5.1, SoupX, scDblFinder, harmony
+   - Key packages: SoupX, scDblFinder, harmony, DropletUtils, whirl
    - Source: docker/preprocessing/
-   
+
 2. scrnaseq-analysis_${VERSION}.sif
    - Purpose: Cell type annotation, differential expression
-   - Key packages: Azimuth, SingleR, edgeR, Signac
+   - Key packages: Azimuth, SingleR, edgeR, Signac, whirl
    - Source: docker/analysis/
-   
+
 3. scrnaseq-spatialxenium_${VERSION}.sif
    - Purpose: Spatial transcriptomics (Xenium platform)
-   - Key packages: presto, Seurat, argparser, arrow, spatstat
+   - Key packages: presto, argparser, arrow, spatstat
    - Source: docker/spatialxenium/
 
 4. qc-report_1.0.sif

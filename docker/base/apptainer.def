@@ -1,0 +1,43 @@
+Bootstrap: docker
+From: rocker/r-ver:4.5.2
+
+%labels
+    maintainer zemw@novonordisk.com
+    description Base R 4.5.2 environment with Seurat and common dependencies
+    version 4.5.2
+
+%post
+    apt-get update && apt-get install -y -qq \
+        libcurl4-openssl-dev libssl-dev libxml2-dev libgit2-dev \
+        libfontconfig1-dev libharfbuzz-dev libfribidi-dev libfreetype6-dev \
+        libpng-dev libtiff5-dev libjpeg-dev libhdf5-dev libudunits2-dev \
+        libgdal-dev libgeos-dev libproj-dev libfftw3-dev libgsl-dev \
+        libcairo2-dev librsvg2-dev libprotobuf-dev protobuf-compiler \
+        libglpk-dev pkg-config cmake git wget build-essential \
+        libnode-dev zlib1g-dev \
+        && rm -rf /var/lib/apt/lists/*
+
+    R -e "install.packages(c('devtools', 'remotes', 'BiocManager', 'renv'), repos='https://cloud.r-project.org/', dependencies=TRUE)"
+    R -e "BiocManager::install(version='3.22', ask=FALSE)"
+
+    Rscript -e "install.packages(c('Rcpp', 'RcppArmadillo', 'RcppEigen', 'RcppAnnoy', 'RcppHNSW', 'RcppProgress', 'RcppRoll', 'RcppTOML', 'RcppML'), repos='https://cloud.r-project.org/', dependencies=TRUE)"
+    Rscript -e "install.packages('Matrix', repos='https://cloud.r-project.org/', dependencies=TRUE)"
+    Rscript -e "install.packages(c('tidyverse', 'dplyr', 'tidyr', 'tibble', 'purrr', 'stringr', 'ggplot2', 'readr', 'readxl', 'data.table', 'reshape2', 'plyr', 'yaml', 'magrittr'), repos='https://cloud.r-project.org/', dependencies=TRUE)"
+    Rscript -e "install.packages(c('ggrepel', 'ggridges', 'cowplot', 'patchwork', 'scales', 'viridis', 'viridisLite', 'RColorBrewer', 'Cairo'), repos='https://cloud.r-project.org/', dependencies=TRUE)"
+    Rscript -e "install.packages(c('irlba', 'RSpectra', 'Rtsne', 'uwot', 'FNN', 'RANN', 'igraph', 'leiden', 'future', 'future.apply', 'progressr'), repos='https://cloud.r-project.org/', dependencies=TRUE)"
+    Rscript -e "install.packages('hdf5r', repos='https://cloud.r-project.org/', dependencies=TRUE)"
+    Rscript -e "BiocManager::install(c('rhdf5', 'Rhdf5lib', 'HDF5Array'), ask=FALSE)"
+    Rscript -e "BiocManager::install(c('BiocGenerics', 'S4Vectors', 'IRanges', 'GenomeInfoDb', 'GenomicRanges', 'Biobase', 'SummarizedExperiment', 'SingleCellExperiment', 'DelayedArray', 'DelayedMatrixStats', 'BiocNeighbors', 'BiocSingular', 'beachmat', 'ScaledMatrix'), ask=FALSE)"
+    Rscript -e "install.packages(c('SeuratObject', 'Seurat', 'sctransform'), repos='https://cloud.r-project.org/', dependencies=TRUE)"
+
+%environment
+    export LC_ALL=C
+    export PATH=/usr/local/bin:$PATH
+    export R_LIBS_USER=/usr/local/lib/R/site-library
+
+%runscript
+    exec R "$@"
+
+%help
+    Base R 4.5.2 environment (Bioconductor 3.22) with Seurat and common dependencies.
+    Used as the base for scrnaseq-preprocessing, scrnaseq-analysis, and scrnaseq-spatialxenium.

@@ -16,6 +16,7 @@
 */
 
 include { SPATIALXENIUM  } from './workflows/spatialxenium'
+include { SCRNASEQ       } from './workflows/scrnaseq'
 include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_spatialxenium_pipeline'
 include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_spatialxenium_pipeline'
 //include { getGenomeAttribute      } from './subworkflows/local/utils_nfcore_spatialxenium_pipeline'
@@ -46,14 +47,40 @@ workflow NFCORE_SPATIALXENIUM {
 
     main:
 
-    //
-    // WORKFLOW: Run pipeline
-    //
-    SPATIALXENIUM (
-        samplesheet
-    )
+    if (params.scrnaseq_input) {
+        // Parse the tab-separated scrnaseq samplesheet into [ meta, sample_path ] tuples
+        ch_scrnaseq = Channel
+            .fromPath(params.scrnaseq_input, checkIfExists: true)
+            .splitCsv(header: true, sep: '\t')
+            .map { row ->
+                def meta = [
+                    id:          row.key,
+                    participant: row.participant,
+                    visit:       row.visit,
+                    arm:         row.arm,
+                    sex:         row.sex,
+                    age:         row.age
+                ]
+                def samplesheet_dir = file(params.scrnaseq_input).parent
+                def fp = row.filepath.startsWith('/') \
+                    ? file(row.filepath, checkIfExists: true) \
+                    : file("${samplesheet_dir}/${row.filepath}", checkIfExists: true)
+                [ meta, fp ]
+            }
+
+        SCRNASEQ(ch_scrnaseq)
+        // Convert to value channel so it broadcasts to every xenium sample in LABEL_TRANSFER
+        ch_reference_rds = SCRNASEQ.out.annotated_rds.first()
+    } else {
+        ch_reference_rds = params.reference_rds
+            ? Channel.value(file(params.reference_rds, checkIfExists: true))
+            : Channel.empty()
+    }
+
+    SPATIALXENIUM(samplesheet, ch_reference_rds)
+
     emit:
-    multiqc_report = SPATIALXENIUM.out.multiqc_report // channel: /path/to/multiqc_report.html
+    multiqc_report = SPATIALXENIUM.out.multiqc_report
 }
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

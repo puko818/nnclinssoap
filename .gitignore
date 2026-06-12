@@ -39,3 +39,10 @@ SpatialXenium/test_results/
 # Nextflow work directories
 .nextflow*
 work/
+
+# Pipeline run outputs (local test runs)
+SpatialXenium/nxf_results/
+SpatialXenium/test_results_mode2/
+
+# AWS ephemeral state (contains instance IDs / IPs — not for version control)
+aws_state.json
