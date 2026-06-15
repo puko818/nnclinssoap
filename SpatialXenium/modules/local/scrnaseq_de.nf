@@ -1,9 +1,10 @@
 process SCRNASEQ_DE {
-    tag "de_annotation=${params.de_annotation}"
+    tag "de_annotation=${de_annotation}"
     label 'process_medium'
 
     input:
     path input_rds
+    val de_annotation
 
     output:
     path "de_results/summary_DE_analysis.csv", emit: summary
@@ -18,7 +19,7 @@ process SCRNASEQ_DE {
     scrnaseq_de.R \\
         --input_rds     ${input_rds} \\
         --outdir        de_results \\
-        --de_annotation ${params.de_annotation}
+        --de_annotation ${de_annotation}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

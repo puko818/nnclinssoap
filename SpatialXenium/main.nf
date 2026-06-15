@@ -47,6 +47,20 @@ workflow NFCORE_SPATIALXENIUM {
 
     main:
 
+    // Resolve label column and DE annotation column.
+    // When running integrated mode, auto-select based on annotation_method unless the
+    // user explicitly overrode the pipeline defaults ('cell_type' / 'predicted.celltype.l1').
+    def label_col = params.single_cell_label_col
+    def de_annotation_col = params.de_annotation
+    if (params.scrnaseq_input) {
+        if (params.single_cell_label_col == 'cell_type') {
+            label_col = (params.annotation_method == 'Azimuth') ? 'predicted.celltype.l1' : 'main_labels'
+        }
+        if (params.de_annotation == 'predicted.celltype.l1' && params.annotation_method != 'Azimuth') {
+            de_annotation_col = 'main_labels'
+        }
+    }
+
     if (params.scrnaseq_input) {
         // Parse the tab-separated scrnaseq samplesheet into [ meta, sample_path ] tuples
         ch_scrnaseq = Channel
@@ -68,7 +82,7 @@ workflow NFCORE_SPATIALXENIUM {
                 [ meta, fp ]
             }
 
-        SCRNASEQ(ch_scrnaseq)
+        SCRNASEQ(ch_scrnaseq, de_annotation_col)
         // Convert to value channel so it broadcasts to every xenium sample in LABEL_TRANSFER
         ch_reference_rds = SCRNASEQ.out.annotated_rds.first()
     } else {
@@ -77,7 +91,7 @@ workflow NFCORE_SPATIALXENIUM {
             : Channel.empty()
     }
 
-    SPATIALXENIUM(samplesheet, ch_reference_rds)
+    SPATIALXENIUM(samplesheet, ch_reference_rds, label_col)
 
     emit:
     multiqc_report = SPATIALXENIUM.out.multiqc_report

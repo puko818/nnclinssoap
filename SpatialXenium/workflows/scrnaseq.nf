@@ -5,8 +5,9 @@ include { SCRNASEQ_DE         } from '../modules/local/scrnaseq_de'
 
 workflow SCRNASEQ {
     take:
-    samplesheet  // channel: [ [meta], sample_path ]
-                 // meta must contain: id, participant, visit, arm, sex, age
+    samplesheet    // channel: [ [meta], sample_path ]
+                   // meta must contain: id, participant, visit, arm, sex, age
+    de_annotation  // val: metadata column used for DE grouping (e.g. main_labels / predicted.celltype.l1)
 
     main:
 
@@ -23,7 +24,7 @@ workflow SCRNASEQ {
     SCRNASEQ_ANNOTATE(SCRNASEQ_INTEGRATE.out.rds)
 
     // 4. Differential expression
-    SCRNASEQ_DE(SCRNASEQ_ANNOTATE.out.rds)
+    SCRNASEQ_DE(SCRNASEQ_ANNOTATE.out.rds, de_annotation)
 
     emit:
     // Annotated RDS is the key output — fed into SpatialXenium LABEL_TRANSFER

@@ -24,6 +24,7 @@ workflow SPATIALXENIUM {
     take:
     ch_samplesheet   // channel: samplesheet read in from --input
     ch_reference_rds // channel: annotated scRNAseq RDS for label transfer (value channel or empty)
+    ch_label_col     // val: metadata column in reference RDS to use for label transfer
 
     main:
 
@@ -42,7 +43,8 @@ workflow SPATIALXENIUM {
     // LABEL_TRANSFER only runs when ch_reference_rds emits an item (empty channel = skip)
     LABEL_TRANSFER(
         ch_xenium_rds,
-        ch_reference_rds
+        ch_reference_rds,
+        ch_label_col
     )
     
     if(params.genes) {

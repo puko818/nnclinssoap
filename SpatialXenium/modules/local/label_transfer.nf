@@ -7,6 +7,7 @@ process LABEL_TRANSFER {
     input:
     tuple val(meta), path(rds)
     path(reference_rds)
+    val label_col
 
     output:
     // path "output", emit: results_dir
@@ -23,7 +24,7 @@ process LABEL_TRANSFER {
     label_transfer.r \\
         --inrds $rds\\
         --reference_rds $reference_rds \\
-        --label_col $params.single_cell_label_col \\
+        --label_col $label_col \\
         --outdir label_transfer \\
         --sample_name $meta.id\\
         --min_celltype_probability $params.min_celltype_probability \\
