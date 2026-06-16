@@ -1,6 +1,8 @@
-# scRNA-seq analysis container
+# scRNA-seq analysis container — binary-package build
 # Cell type annotation and differential expression
-# Extends: nnclinssoap/scrnaseq-base:4.5.2
+# Extends the binary base, which sets P3M CRAN+Bioc repos globally in Rprofile.site.
+# All installs use install.packages (NOT BiocManager::install) so they go through the
+# inherited P3M repos and never contact bioconductor.org (which hangs on a 302 redirect).
 
 FROM nnclinssoap/scrnaseq-base:4.5.2
 
@@ -8,58 +10,46 @@ LABEL maintainer="zemw@novonordisk.com"
 LABEL description="R environment for scRNA-seq analysis: Azimuth, SingleR, edgeR, Signac"
 LABEL version="4.5.2"
 
-RUN Rscript -e " \
-    install.packages( \
-        c('ggpubr', 'ggthemes', 'pheatmap', 'DT'), \
-        repos='https://cloud.r-project.org/', dependencies=TRUE); \
-    "
+RUN R -e "install.packages(c('ggpubr', 'ggthemes', 'pheatmap', 'DT'))"
 
-RUN Rscript -e " \
-    BiocManager::install(c( \
+RUN R -e "install.packages(c( \
         'GenomicFeatures', 'GenomicAlignments', 'BiocFileCache', \
-        'AnnotationHub', 'ExperimentHub' \
-    ), ask=FALSE); \
-    "
+        'AnnotationHub', 'ExperimentHub'))"
 
-RUN Rscript -e " \
-    BiocManager::install(c( \
+RUN R -e "install.packages(c( \
         'org.Hs.eg.db', 'AnnotationDbi', 'AnnotationFilter', 'GO.db', 'KEGGREST', \
-        'BSgenome', 'BSgenome.Hsapiens.UCSC.hg38', 'EnsDb.Hsapiens.v86', 'JASPAR2020' \
-    ), ask=FALSE); \
-    "
+        'BSgenome', 'BSgenome.Hsapiens.UCSC.hg38', 'EnsDb.Hsapiens.v86', 'JASPAR2020'))"
 
-RUN Rscript -e " \
-    BiocManager::install(c('DropletUtils', 'glmGamPoi', 'bluster', 'DirichletMultinomial'), ask=FALSE); \
-    "
+RUN R -e "install.packages(c('DropletUtils', 'glmGamPoi', 'bluster', 'DirichletMultinomial'))"
 
 # TFMPvalue from archive (required by TFBSTools -> Azimuth)
-RUN Rscript -e " \
+RUN R -e " \
     options(timeout=600); \
     install.packages( \
         'https://cran.r-project.org/src/contrib/Archive/TFMPvalue/TFMPvalue_0.0.9.tar.gz', \
         repos=NULL, type='source'); \
     "
 
-RUN Rscript -e "BiocManager::install('TFBSTools', ask=FALSE)"
+RUN R -e "install.packages('TFBSTools')"
 
-RUN Rscript -e " \
-    remotes::install_github('satijalab/azimuth', ref='master', dependencies=TRUE, upgrade='never'); \
+RUN R -e " \
+    remotes::install_github('satijalab/azimuth', ref='master', upgrade='never'); \
     "
 
 # Download, install, and clean up pbmcref in a single layer to avoid bloating image
 RUN wget -q https://seurat.nygenome.org/src/contrib/pbmcref.SeuratData_1.0.0.tar.gz && \
-    Rscript -e "install.packages('pbmcref.SeuratData_1.0.0.tar.gz', repos=NULL, type='source')" && \
+    R -e "install.packages('pbmcref.SeuratData_1.0.0.tar.gz', repos=NULL, type='source')" && \
     rm pbmcref.SeuratData_1.0.0.tar.gz
 
-RUN Rscript -e "BiocManager::install(c('SingleR', 'celldex'), ask=FALSE)"
+RUN R -e "install.packages(c('SingleR', 'celldex'))"
 
-RUN Rscript -e "install.packages('Signac', repos='https://cloud.r-project.org/', dependencies=TRUE)"
+RUN R -e "install.packages('Signac')"
 
-RUN Rscript -e "BiocManager::install(c('edgeR', 'limma', 'DESeq2'), ask=FALSE)"
+RUN R -e "install.packages(c('edgeR', 'limma', 'DESeq2'))"
 
-RUN Rscript -e "install.packages('SoupX', repos='https://cloud.r-project.org/', dependencies=TRUE)"
+RUN R -e "install.packages('SoupX')"
 
-RUN Rscript -e "remotes::install_github('NovoNordisk-OpenSource/whirl', dependencies=TRUE)"
+RUN R -e "remotes::install_github('NovoNordisk-OpenSource/whirl')"
 
 ENV LC_ALL=C
 ENV PATH=/usr/local/bin:$PATH

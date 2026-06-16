@@ -48,17 +48,14 @@ workflow NFCORE_SPATIALXENIUM {
     main:
 
     // Resolve label column and DE annotation column.
-    // When running integrated mode, auto-select based on annotation_method unless the
-    // user explicitly overrode the pipeline defaults ('cell_type' / 'predicted.celltype.l1').
+    // In integrated mode (scrnaseq_input set), the reference RDS is always produced by the
+    // pipeline so column names are fixed by annotation_method — always auto-select.
+    // In manual mode (reference_rds), use single_cell_label_col as-is.
     def label_col = params.single_cell_label_col
     def de_annotation_col = params.de_annotation
     if (params.scrnaseq_input) {
-        if (params.single_cell_label_col == 'cell_type') {
-            label_col = (params.annotation_method == 'Azimuth') ? 'predicted.celltype.l1' : 'main_labels'
-        }
-        if (params.de_annotation == 'predicted.celltype.l1' && params.annotation_method != 'Azimuth') {
-            de_annotation_col = 'main_labels'
-        }
+        label_col = (params.annotation_method == 'Azimuth') ? 'predicted.celltype.l1' : 'main_labels'
+        de_annotation_col = (params.annotation_method == 'Azimuth') ? 'predicted.celltype.l1' : 'main_labels'
     }
 
     if (params.scrnaseq_input) {

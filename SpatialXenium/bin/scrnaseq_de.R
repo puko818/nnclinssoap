@@ -97,8 +97,9 @@ run_edgeR <- function(seurat_obj, cell_type, outdir) {
 
   qlf.interaction <- glmQLFTest(fit, contrast = c(0, rep(0, ncol(design) - 3), -1, 1))
   counts_norm     <- edgeR::cpm(y, log = TRUE, prior.count = 3)
-  write_csv(rownames_to_column(as.data.frame(counts_norm), var = "gene"),
-            file.path(outdir, paste0(cell_type_label, "_countsNorm.csv")))
+  write.csv(rownames_to_column(as.data.frame(counts_norm), var = "gene"),
+            file.path(outdir, paste0(cell_type_label, "_countsNorm.csv")),
+            row.names = FALSE)
 
   # Top 5 line plots
   genes     <- rownames(topTags(qlf.interaction))[1:min(5, nrow(topTags(qlf.interaction)))]

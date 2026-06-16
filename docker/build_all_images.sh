@@ -107,11 +107,14 @@ build_container() {
         log "Building Docker image..."
         docker build -t "${docker_tag}" . \
             2>&1 | tee "${log_file}"
-        
-        local build_exit_code=$?
-        
-        # Verify both exit code and image existence
-        if [ $build_exit_code -eq 0 ] && docker images "${docker_tag}" | grep -q "${docker_tag}"; then
+
+        # PIPESTATUS[0] = docker build's exit code (not tee's, which is always 0)
+        local build_exit_code=${PIPESTATUS[0]}
+
+        # Verify both exit code and image existence. Use `docker image inspect`:
+        # `docker images <repo:tag> | grep <repo:tag>` never matches because the
+        # listing prints repo and tag in separate columns, not as repo:tag.
+        if [ $build_exit_code -eq 0 ] && docker image inspect "${docker_tag}" >/dev/null 2>&1; then
             success "${name} Docker image built successfully"
             log "Image: ${docker_tag}"
             log "Log: ${log_file}"
@@ -217,11 +220,21 @@ EOF
 for container in "${CONTAINERS[@]}"; do
     if [ "$container" = "qc-report" ]; then
         img_file="${IMAGE_OUTPUT}/qc-report_1.0.sif"
+        docker_tag="nnclinssoap/qc-report:1.0"
     else
         img_file="${IMAGE_OUTPUT}/scrnaseq-${container}_${VERSION}.sif"
+        docker_tag="nnclinssoap/scrnaseq-${container}:${VERSION}"
     fi
-    
-    if [ -f "$img_file" ]; then
+
+    # Docker-only mode produces images, not .sif files — check the right artifact.
+    if [ "$BUILD_TYPE" = "docker" ]; then
+        if docker image inspect "$docker_tag" >/dev/null 2>&1; then
+            size=$(docker image inspect "$docker_tag" --format '{{.Size}}' | awk '{printf "%.2fGB", $1/1024/1024/1024}')
+            echo "✅ ${docker_tag} (${size})" >> "${IMAGE_OUTPUT}/VERSION_MANIFEST.txt"
+        else
+            echo "❌ ${docker_tag} (FAILED)" >> "${IMAGE_OUTPUT}/VERSION_MANIFEST.txt"
+        fi
+    elif [ -f "$img_file" ]; then
         size=$(du -h "$img_file" | cut -f1)
         echo "✅ $(basename $img_file) (${size})" >> "${IMAGE_OUTPUT}/VERSION_MANIFEST.txt"
     else

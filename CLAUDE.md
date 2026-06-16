@@ -103,6 +103,23 @@ RUN wget -q https://seurat.nygenome.org/src/contrib/pbmcref.SeuratData_1.0.0.tar
 
 Quarto was installed in preprocessing and analysis containers but never used (scripts generate PDFs directly via `pdf()`/fpdf2). Removed from both.
 
+### Binary-package build (build-time: ~4h → ~6min)
+
+The Dockerfiles install **precompiled binaries** instead of compiling from source. The original `repos='https://cloud.r-project.org/'` served source-only on Linux, so ~319 packages compiled from source (the base alone took ~4h; the `devtools` layer alone was ~2.4h). Now:
+
+- **CRAN → Posit P3M binary repo**, pinned: `https://packagemanager.posit.co/cran/__linux__/noble/<CRAN_DATE>`. Pinned date = reproducible *and* binary.
+- **Bioconductor → P3M's Bioc mirror** (`.../bioconductor/__linux__/noble/packages/3.22/bioc` + `data/annotation` + `data/experiment`). P3M has **no** Bioc Linux binaries, so these ~32 packages still compile from source — but fast (~3min under parallel make) and, critically, **redirect-free**.
+- **Do NOT use `BiocManager::install` or bioconductor.org directly.** bioconductor.org's `BioCsoft` index 302-redirects to a mirror that **hangs >90s per request** from some networks — it stalled a full build for 2h. All Dockerfiles set the P3M repos globally in `Rprofile.site` and use `install.packages` only.
+- `dependencies=TRUE` was dropped (it pulled the unused `Suggests` tree). Verified no runtime `library()` relies on a Suggests-only package.
+- `UBUNTU_CODENAME` (noble) must match the base image's Ubuntu release or P3M serves ABI-incompatible binaries — the base Dockerfile asserts this and fails fast.
+- `docker/base/apptainer.def` mirrors this (it is **not** a thin wrapper — keep its `%post` in sync with the Dockerfile).
+
+**presto gotcha (spatialxenium):** presto 1.0.0 declares `CXX_STD=CXX11`, but the newer binary RcppArmadillo 15.x requires C++14+. The Dockerfile raises `CXX11STD=-std=gnu++17` in `Makevars.site` before installing presto, and guards the install with a `stop()` (because `install.packages`/`install_github` only **warn** on compile failure, which would otherwise ship a broken image silently).
+
+### build script exit-code bugs (fixed)
+
+`build_all_images.sh` / `build_single.sh` used `docker images <repo:tag> | grep <repo:tag>` to verify a build — which **never matches** (the listing prints repo and tag in separate columns), so successful builds were reported FAILED and `VERSION_MANIFEST.txt` showed all ❌ even when images built fine. Fixed to use `docker image inspect`, `${PIPESTATUS[0]}` (not `$?` after a `| tee`), and a `BUILD_TYPE`-aware manifest check (Docker mode has no `.sif` files).
+
 ---
 
 ## Nextflow / scRNA-seq integration

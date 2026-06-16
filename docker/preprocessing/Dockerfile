@@ -1,6 +1,8 @@
-# scRNA-seq preprocessing container
+# scRNA-seq preprocessing container — binary-package build
 # QC, doublet detection, ambient RNA removal, batch correction
-# Extends: nnclinssoap/scrnaseq-base:4.5.2
+# Extends the binary base, which sets P3M CRAN+Bioc repos globally in Rprofile.site.
+# All installs use install.packages (NOT BiocManager::install) so they go through the
+# inherited P3M repos and never contact bioconductor.org (which hangs on a 302 redirect).
 
 FROM nnclinssoap/scrnaseq-base:4.5.2
 
@@ -8,15 +10,15 @@ LABEL maintainer="zemw@novonordisk.com"
 LABEL description="R environment for scRNA-seq preprocessing: Seurat, SoupX, scDblFinder, harmony"
 LABEL version="4.5.2"
 
-RUN Rscript -e "BiocManager::install(c('DropletUtils', 'scDblFinder', 'glmGamPoi', 'bluster'), ask=FALSE)"
+RUN R -e "install.packages(c('DropletUtils', 'scDblFinder', 'glmGamPoi', 'bluster'))"
 
-RUN Rscript -e "BiocManager::install(c('org.Hs.eg.db', 'AnnotationDbi', 'GO.db', 'KEGGREST'), ask=FALSE)"
+RUN R -e "install.packages(c('org.Hs.eg.db', 'AnnotationDbi', 'GO.db', 'KEGGREST'))"
 
-RUN Rscript -e "install.packages('SoupX', repos='https://cloud.r-project.org/', dependencies=TRUE)"
+RUN R -e "install.packages('SoupX')"
 
-RUN Rscript -e "BiocManager::install('harmony', ask=FALSE)"
+RUN R -e "install.packages('harmony')"
 
-RUN Rscript -e "remotes::install_github('NovoNordisk-OpenSource/whirl', dependencies=TRUE)"
+RUN R -e "remotes::install_github('NovoNordisk-OpenSource/whirl')"
 
 ENV LC_ALL=C
 ENV PATH=/usr/local/bin:$PATH

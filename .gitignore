@@ -43,6 +43,7 @@ work/
 # Pipeline run outputs (local test runs)
 SpatialXenium/nxf_results/
 SpatialXenium/test_results_mode2/
+SpatialXenium/test_results_binary/
 
 # AWS ephemeral state (contains instance IDs / IPs — not for version control)
 aws_state.json

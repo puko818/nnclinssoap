@@ -1,6 +1,8 @@
 process SCRNASEQ_DE {
     tag "de_annotation=${de_annotation}"
-    label 'process_medium'
+    // edgeR pseudo-bulk DE peaks ~11GB on the test data; process_medium's 8GB
+    // first attempt OOMs and wastes a retry. process_high_memory starts at 16GB.
+    label 'process_high_memory'
 
     input:
     path input_rds

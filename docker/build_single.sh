@@ -99,11 +99,12 @@ if [ "$BUILD_TYPE" = "docker" ]; then
     fi
     
     log "Building Docker image..."
-    if docker build -t "${DOCKER_TAG}" . 2>&1 | tee "${LOG_FILE}"; then
-        # Verify image was created
-        if docker images "${DOCKER_TAG}" | grep -q "${DOCKER_TAG}"; then
-            BUILD_SUCCESS=true
-        fi
+    docker build -t "${DOCKER_TAG}" . 2>&1 | tee "${LOG_FILE}"
+    # PIPESTATUS[0] = docker build's exit code (tee's is always 0). Verify existence
+    # with `docker image inspect`: `docker images <repo:tag>` prints repo and tag in
+    # separate columns, so grepping for repo:tag never matches.
+    if [ "${PIPESTATUS[0]}" -eq 0 ] && docker image inspect "${DOCKER_TAG}" >/dev/null 2>&1; then
+        BUILD_SUCCESS=true
     fi
     
 else
