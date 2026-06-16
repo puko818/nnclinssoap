@@ -14,11 +14,14 @@ This guide provides step-by-step instructions for building the nnclinssoap conta
 
 | Container | Purpose | Key Packages | Build Time* |
 |-----------|---------|--------------|-------------|
-| **preprocessing** | QC, doublet detection, batch correction | Seurat 5.1, SoupX, scDblFinder, harmony | ~2-3 hours |
-| **analysis** | Cell annotation, differential expression | Azimuth, SingleR, edgeR, Signac | ~3-4 hours |
-| **spatialxenium** | Spatial transcriptomics analysis | presto, Seurat, argparser, arrow | ~2-3 hours |
+| **base** | Shared Seurat/Bioconductor/tidyverse layer | Seurat, Bioconductor core, tidyverse | ~6 min |
+| **preprocessing** | QC, doublet detection, batch correction | Seurat 5.1, SoupX, scDblFinder, harmony | ~3 min |
+| **analysis** | Cell annotation, differential expression | Azimuth, SingleR, edgeR, Signac | ~10 min |
+| **spatialxenium** | Spatial transcriptomics analysis | presto, Seurat, argparser, arrow | ~1 min |
 
-*Build times are estimates and vary based on system resources and network speed.
+*Binary-package build (Posit P3M) — the whole R stack builds in ~20 min. Times
+vary with system resources and network speed. See CLAUDE.md "Binary-package build"
+for how this works (and why we don't use bioconductor.org directly).
 
 ---
 
@@ -75,8 +78,8 @@ sbatch docker/build_all_images.sh
 ### Network Dependencies
 
 The build process downloads packages from:
-- **CRAN:** `https://cloud.r-project.org/`
-- **Bioconductor:** `https://bioconductor.org/`
+- **CRAN:** Posit P3M binary repo `https://packagemanager.posit.co/cran/__linux__/noble/<date>`
+- **Bioconductor:** Posit P3M Bioc mirror `https://packagemanager.posit.co/bioconductor/...` (redirect-free; **not** bioconductor.org, whose index can hang from some networks)
 - **GitHub:** `https://github.com/` (for presto, Azimuth, etc.)
   - **Important:** GitHub has rate limits (60 requests/hour unauthenticated)
   - Set `GITHUB_PAT` if experiencing rate limit issues
@@ -128,7 +131,7 @@ nnclinssoap/
 # 1. Navigate to repository root
 cd /path/to/nnclinssoap
 
-# 2. Build all containers (takes 6-8 hours)
+# 2. Build all containers (~20 min, binary-package build)
 ./docker/build_all_images.sh
 
 # 3. Verify builds
@@ -211,7 +214,7 @@ sbatch docker/build_all_images.sh
 ```
 
 **Advantages:**
-- Faster (2-3 hours instead of 6-8)
+- Faster (rebuild one image in ~1-10 min instead of the full ~20 min)
 - Test individual changes
 - Debug specific build issues
 
@@ -311,7 +314,7 @@ apptainer exec containers/scrnaseq-preprocessing_4.5.2.sif R
 - `harmony` requires specific Rcpp version
   - Solution: Install Rcpp packages first (already in .def)
 
-**Estimated time:** 2-3 hours
+**Estimated time:** ~3 min
 
 ---
 
@@ -334,7 +337,7 @@ apptainer exec containers/scrnaseq-preprocessing_4.5.2.sif R
 - `Signac` requires genomic annotations
   - Solution: Install BSgenome packages first (already in .def)
 
-**Estimated time:** 3-4 hours
+**Estimated time:** ~10 min
 
 ---
 
@@ -355,7 +358,7 @@ apptainer exec containers/scrnaseq-preprocessing_4.5.2.sif R
 - `spatstat` suite has many dependencies
   - Solution: Install in correct order (already in .def)
 
-**Estimated time:** 2-3 hours
+**Estimated time:** ~1 min
 
 ---
 
@@ -454,7 +457,7 @@ Error: compilation failed for package 'XXX'
 # Ctrl+C to cancel
 
 # Check network connectivity
-ping cloud.r-project.org
+ping packagemanager.posit.co
 
 # Check system resources
 htop  # or: top
@@ -662,12 +665,13 @@ When R or package versions change:
 
 2. **Add package to correct section:**
    ```bash
-   # CRAN packages
-   Rscript -e "install.packages('newpackage', repos='https://cloud.r-project.org/')"
-   
-   # Bioconductor packages
-   Rscript -e "BiocManager::install('newpackage', ask=FALSE)"
-   
+   # CRAN packages — no repos= ; the binary P3M repos are set globally in Rprofile.site
+   R -e "install.packages('newpackage')"
+
+   # Bioconductor packages — use install.packages (NOT BiocManager::install, which
+   # would contact bioconductor.org and can hang); P3M Bioc repos are set globally
+   R -e "install.packages('newpackage')"
+
    # GitHub packages
    Rscript -e "remotes::install_github('user/repo')"
    ```
@@ -690,9 +694,9 @@ When R or package versions change:
 
 | Phase | Disk Space | Memory | CPU | Time |
 |-------|------------|--------|-----|------|
-| Single build | ~10 GB | 8 GB | 2+ cores | 2-3 hours |
-| Full build | ~30 GB | 16 GB | 4+ cores | 6-8 hours |
-| Storage (final) | ~5 GB | - | - | - |
+| Single build | ~10 GB | 8 GB | 2+ cores | ~1-10 min |
+| Full build | ~30 GB | 16 GB | 4+ cores | ~20 min |
+| Storage (final) | ~13 GB | - | - | - |
 
 ---
 

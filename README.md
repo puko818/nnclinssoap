@@ -42,8 +42,8 @@ nnclinssoap/
 cd docker
 ./build_all_images.sh -v docker
 
-# Builds 4 containers: preprocessing, analysis, spatialxenium, qc-report
-# Total time: ~3-6 hours (parallelizable)
+# Builds 5 containers: base, preprocessing, analysis, spatialxenium, qc-report
+# Total time: ~20 min (binary-package build via Posit P3M)
 ```
 
 ### 3. Run sc/snRNA-seq Pipeline

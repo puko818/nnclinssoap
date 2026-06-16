@@ -97,11 +97,12 @@
 
 | Container | Purpose | Build Time | Size |
 |-----------|---------|------------|------|
-| preprocessing | QC, doublets, batch correction | 2-3 hours | ~1.5 GB |
-| analysis | Annotation, differential expression | 3-4 hours | ~2.0 GB |
-| spatialxenium | Spatial transcriptomics | 2-3 hours | ~1.5 GB |
+| base | Shared Seurat/Bioconductor/tidyverse layer | ~6 min | ~2.5 GB |
+| preprocessing | QC, doublets, batch correction | ~3 min | ~3.2 GB |
+| analysis | Annotation, differential expression | ~10 min | ~4.7 GB |
+| spatialxenium | Spatial transcriptomics | ~1 min | ~2.6 GB |
 
-**Total:** 6-8 hours, ~5 GB
+**Total:** ~20 min (binary-package build via Posit P3M; see CLAUDE.md)
 
 ### Requirements
 

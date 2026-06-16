@@ -7,7 +7,7 @@
 ./docker/check_build_prerequisites.sh
 ```
 
-## Step 1: Build Containers (~4-6 hours)
+## Step 1: Build Containers (~20 min)
 ```bash
 cd docker
 sbatch build_all_images.sh
@@ -83,10 +83,10 @@ nextflow run main.nf -profile test,singularity -resume
 
 ## Expected Timeline
 
-1. **Container build:** 4-6 hours (one-time)
+1. **Container build:** ~20 min (one-time, binary-package build)
 2. **Data download:** 15-30 minutes (one-time, ~6 GB)
 3. **Pipeline run:** 1.5-3 hours (per test run)
-4. **Total first run:** ~6-9 hours
+4. **Total first run:** ~2-4 hours
 5. **Subsequent runs:** ~2 hours (with `-resume`)
 
 ---

@@ -83,7 +83,7 @@ bash build_all_images.sh
 tail -f logs/build_*.log
 ```
 
-Build time: ~4-6 hours per container
+Build time: ~1-10 min per container (~20 min for the full stack; binary-package build)
 
 **Step 1.3: Quick container test**
 
