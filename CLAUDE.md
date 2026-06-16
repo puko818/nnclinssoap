@@ -298,6 +298,8 @@ process {
 
 The `SCRNASEQ_INTEGRATE` process has `label 'process_high'` (12 CPUs / 16 GB by default) but integration is memory-bound not CPU-bound — tune `memory` up and `cpus` down for large datasets. The `(n=8)` in the Nextflow task name is the number of input samples (from the `tag` directive), not the CPU count.
 
+`SCRNASEQ_DE` uses `label 'process_high_memory'` (16 GB first attempt). It was `process_medium` (8 GB), which OOM-killed the first attempt on the test data (edgeR pseudo-bulk peaks ~11 GB) and wasted a retry. If you see DE fail with exit 137 (`Killed`), it's memory — bump the label, not a code bug.
+
 Use `-resume` on re-runs to skip successfully completed tasks. Without `-resume` Nextflow starts from scratch. Cannot be added retroactively to an already-running job.
 
 ---
