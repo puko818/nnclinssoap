@@ -72,8 +72,8 @@ qc-report (independent)
 | Image | FROM | Unique additions |
 |---|---|---|
 | `scrnaseq-base:4.5.2` | `rocker/r-ver:4.5.2` | System deps (superset), Seurat, tidyverse, Bioconductor core, HDF5 |
-| `scrnaseq-preprocessing:4.5.2` | `scrnaseq-base:4.5.2` | SoupX, scDblFinder, harmony, DropletUtils, org.Hs.eg.db, whirl |
-| `scrnaseq-analysis:4.5.2` | `scrnaseq-base:4.5.2` | Azimuth, SingleR, edgeR, Signac, pbmcref, whirl |
+| `scrnaseq-preprocessing:4.5.2` | `scrnaseq-base:4.5.2` | SoupX, scDblFinder, harmony, DropletUtils, org.Hs.eg.db |
+| `scrnaseq-analysis:4.5.2` | `scrnaseq-base:4.5.2` | Azimuth, SingleR, edgeR, Signac, pbmcref |
 | `scrnaseq-spatialxenium:4.5.2` | `scrnaseq-base:4.5.2` | argparser, arrow, spatstat.*, presto (GitHub), shiny, plotly |
 | `qc-report:1.0` | `python:3.11-slim` | fpdf2, procps |
 
@@ -87,7 +87,7 @@ From: nnclinssoap/scrnaseq-preprocessing:4.5.2
 # No %post section — the Docker image is complete
 ```
 
-The base `docker/base/apptainer.def` still uses `Bootstrap: docker` (Docker Hub) since it has no local parent.
+All four R-stack `.def` files — including `docker/base/apptainer.def` — are now thin `docker-daemon` wrappers off their respective `nnclinssoap/*` Docker images, with no `%post`. (The base def was previously a full `%post` build from `rocker/r-ver` that mirrored the Dockerfile; it drifted from the Dockerfile and was converted to a thin wrapper so the Dockerfile is the sole source of truth.) Only `docker/qc-report/apptainer.def` still uses `Bootstrap: docker` (from `python:3.11-slim`), with a trivial two-line `%post` (procps + fpdf2) that is kept in sync with its Dockerfile.
 
 ### pbmcref download fix (analysis container)
 
@@ -103,18 +103,18 @@ RUN wget -q https://seurat.nygenome.org/src/contrib/pbmcref.SeuratData_1.0.0.tar
 
 Quarto was installed in preprocessing and analysis containers but never used (scripts generate PDFs directly via `pdf()`/fpdf2). Removed from both.
 
-### Binary-package build (build-time: ~4h → ~6min)
+### Binary-package build (base build-time: ~4h → ~11min)
 
-The Dockerfiles install **precompiled binaries** instead of compiling from source. The original `repos='https://cloud.r-project.org/'` served source-only on Linux, so ~319 packages compiled from source (the base alone took ~4h; the `devtools` layer alone was ~2.4h). Now:
+The Dockerfiles install **precompiled binaries** instead of compiling from source. The original `repos='https://cloud.r-project.org/'` served source-only on Linux, so ~319 packages compiled from source (the base alone took ~4h; the `devtools` layer alone was ~2.4h). **Measured after the switch:** a clean `--no-cache` build of the base image is **~11min** on 16 vCPU (the ~32 Bioc source compiles are the bulk; CRAN arrives as binaries). For reference, the original upstream stack (no shared base, everything source-compiled) was benchmarked at **~360min** on comparable hardware (r6i.4xlarge, 16 vCPU / 128 GB). Derived images (`preprocessing`/`analysis`/`spatialxenium`) only add their workflow-specific packages on top of this base. Now:
 
-- **CRAN → Posit P3M binary repo**, pinned: `https://packagemanager.posit.co/cran/__linux__/noble/<CRAN_DATE>`. Pinned date = reproducible *and* binary.
-- **Bioconductor → P3M's Bioc mirror** (`.../bioconductor/__linux__/noble/packages/3.22/bioc` + `data/annotation` + `data/experiment`). P3M has **no** Bioc Linux binaries, so these ~32 packages still compile from source — but fast (~3min under parallel make) and, critically, **redirect-free**.
-- **Do NOT use `BiocManager::install` or bioconductor.org directly.** bioconductor.org's `BioCsoft` index 302-redirects to a mirror that **hangs >90s per request** from some networks — it stalled a full build for 2h. All Dockerfiles set the P3M repos globally in `Rprofile.site` and use `install.packages` only.
+- **CRAN → inherited from rocker, not set by us.** `rocker/r-ver:4.5.2` already points CRAN at its own pinned P3M binary repo (`p3m.dev/cran/__linux__/noble/<rocker's snapshot date>`) and sets the `HTTPUserAgent` that makes P3M serve Linux **binaries**. Verified: `RcppArmadillo` installs as `*binary*` in seconds on stock rocker. So the base does **not** override CRAN — it inherits rocker's binary repo (reproducible: the snapshot date is fixed by the `4.5.2` image tag).
+- **Bioconductor → P3M's Bioc mirror, codename-free** (`.../bioconductor/packages/3.22/bioc` + `data/annotation` + `data/experiment`). These three URLs are appended (unnamed) to rocker's repos vector in `Rprofile.site`. P3M has **no** Bioc Linux binaries, so these ~32 packages compile from source — but fast (~3min under parallel make) and, critically, **redirect-free**. No `__linux__/<codename>` segment: Bioc source is distro-independent (noble/jammy/focal all return identical packages), so the codename was dropped.
+- **Do NOT use `BiocManager::install` or bioconductor.org directly.** bioconductor.org's `BioCsoft` index 302-redirects to a mirror that **hangs >90s per request** from some networks — it stalled a full build for 2h. The base sets the Bioc repos in `Rprofile.site` (merged into rocker's CRAN) and uses `install.packages` only; **BiocManager is not installed** (it was unused).
 - `dependencies=TRUE` was dropped (it pulled the unused `Suggests` tree). Verified no runtime `library()` relies on a Suggests-only package.
-- `UBUNTU_CODENAME` (noble) must match the base image's Ubuntu release or P3M serves ABI-incompatible binaries — the base Dockerfile asserts this and fails fast.
-- `docker/base/apptainer.def` mirrors this (it is **not** a thin wrapper — keep its `%post` in sync with the Dockerfile).
+- **No codename ARG or assertion.** CRAN's codename comes from rocker (self-matching its own base), and the Bioc repos are codename-free, so there is nothing to assert — the former `UBUNTU_CODENAME` ARG + fail-fast check were removed as unnecessary.
+- `docker/base/apptainer.def` is now a thin `docker-daemon` wrapper off `nnclinssoap/scrnaseq-base:4.5.2` (like the other R-stack defs), so it cannot drift from the Dockerfile — there is no `%post` to keep in sync.
 
-**presto gotcha (spatialxenium):** presto 1.0.0 declares `CXX_STD=CXX11`, but the newer binary RcppArmadillo 15.x requires C++14+. The Dockerfile raises `CXX11STD=-std=gnu++17` in `Makevars.site` before installing presto, and guards the install with a `stop()` (because `install.packages`/`install_github` only **warn** on compile failure, which would otherwise ship a broken image silently).
+**presto note (spatialxenium):** presto 1.0.0 declares `CXX_STD=CXX11`. The base's pinned `RcppArmadillo` (15.2.3.1, from rocker's snapshot) has a **C++11 fallback** (RcppCore issue #475): under `-std=gnu++11` it transparently degrades to Armadillo 14.6.3 compatibility and compiles presto cleanly — verified, `* DONE (presto)`. So the Dockerfile installs presto plainly (`devtools::install_github('immunogenomics/presto', ref='1.0.0', upgrade='never')`), matching upstream, with **no `Makevars.site` override**. A comment in the Dockerfile flags the forward risk: if the base/CRAN snapshot is ever advanced to a RcppArmadillo that drops the C++11 fallback, presto's CXX11 build would break and would need `CXX11STD=-std=gnu++17` (or a newer presto) reintroduced.
 
 ### build script exit-code bugs (fixed)
 

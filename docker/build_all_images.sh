@@ -129,13 +129,33 @@ build_container() {
         # Priority: apptainer.def > Dockerfile
         if [ -f "apptainer.def" ]; then
             log "Using apptainer.def"
+
+            # A thin `Bootstrap: docker-daemon` def converts an existing Docker image,
+            # so build that image from the Dockerfile first. Self-contained defs (e.g.
+            # qc-report, which bootstraps python + %post) skip this and build directly.
+            if grep -q "^Bootstrap: docker-daemon" apptainer.def && [ -f "Dockerfile" ]; then
+                if [ "$name" = "qc-report" ]; then
+                    local docker_tag="nnclinssoap/${name}:1.0"
+                else
+                    local docker_tag="nnclinssoap/scrnaseq-${name}:${VERSION}"
+                fi
+                log "Building Docker image ${docker_tag} (required by docker-daemon def)..."
+                docker build -t "${docker_tag}" . \
+                    2>&1 | tee "${log_file}.docker"
+                if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+                    log "Docker build failed for ${docker_tag}"
+                    return 1
+                fi
+            fi
+
             ${CONTAINER_CMD} build --force \
                 "${IMAGE_OUTPUT}/${output_name}" \
                 apptainer.def \
                 2>&1 | tee "${log_file}"
-            
-            local build_exit_code=$?
-            
+
+            # PIPESTATUS[0] = apptainer's exit code (not tee's, which is always 0)
+            local build_exit_code=${PIPESTATUS[0]}
+
             # Verify both exit code and file existence
             if [ $build_exit_code -eq 0 ] && [ -f "${IMAGE_OUTPUT}/${output_name}" ]; then
                 local size=$(du -h "${IMAGE_OUTPUT}/${output_name}" | cut -f1)
@@ -146,31 +166,31 @@ build_container() {
                 log "Build failed with exit code: ${build_exit_code}"
                 return 1
             fi
-            
+
         elif [ -f "Dockerfile" ]; then
             log "Found Dockerfile - will build via Docker and convert"
-            
+
             # Check if Docker is available for conversion
             if command -v docker &> /dev/null; then
                 log "Building with Docker..."
-                docker build -t "nnclinssoap/${name}:${VERSION}" . \
+                docker build -t "nnclinssoap/scrnaseq-${name}:${VERSION}" . \
                     2>&1 | tee "${log_file}.docker"
-                
-                local docker_exit_code=$?
-                
+
+                local docker_exit_code=${PIPESTATUS[0]}
+
                 if [ $docker_exit_code -ne 0 ]; then
                     log "Docker build failed with exit code: ${docker_exit_code}"
                     return 1
                 fi
-                
+
                 log "Converting to Singularity format..."
                 ${CONTAINER_CMD} build --force \
                     "${IMAGE_OUTPUT}/${output_name}" \
-                    "docker-daemon://nnclinssoap/${name}:${VERSION}" \
+                    "docker-daemon://nnclinssoap/scrnaseq-${name}:${VERSION}" \
                     2>&1 | tee -a "${log_file}"
-                
-                local convert_exit_code=$?
-                
+
+                local convert_exit_code=${PIPESTATUS[0]}
+
                 # Verify both exit code and file existence
                 if [ $convert_exit_code -eq 0 ] && [ -f "${IMAGE_OUTPUT}/${output_name}" ]; then
                     local size=$(du -h "${IMAGE_OUTPUT}/${output_name}" | cut -f1)
@@ -253,12 +273,12 @@ Image Details:
 
 1. scrnaseq-preprocessing_${VERSION}.sif
    - Purpose: Initial QC, doublet detection, ambient RNA removal
-   - Key packages: SoupX, scDblFinder, harmony, DropletUtils, whirl
+   - Key packages: SoupX, scDblFinder, harmony, DropletUtils
    - Source: docker/preprocessing/
 
 2. scrnaseq-analysis_${VERSION}.sif
    - Purpose: Cell type annotation, differential expression
-   - Key packages: Azimuth, SingleR, edgeR, Signac, whirl
+   - Key packages: Azimuth, SingleR, edgeR, Signac
    - Source: docker/analysis/
 
 3. scrnaseq-spatialxenium_${VERSION}.sif

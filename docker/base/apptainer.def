@@ -1,60 +1,18 @@
-Bootstrap: docker
-From: rocker/r-ver:4.5.2
+Bootstrap: docker-daemon
+From: nnclinssoap/scrnaseq-base:4.5.2
 
-# Base R 4.5.2 / Bioc 3.22 environment — binary-package build.
-# Mirrors docker/base/Dockerfile: CRAN packages come from Posit P3M binaries and
-# Bioconductor from P3M's redirect-free mirror (bioconductor.org's index 302-hangs
-# from some networks). This is the Singularity-native build path; the primary path
-# (docker/build_all_images.sh with Docker available) converts the Docker image via
-# docker-daemon and is the validated one. Keep this %post in sync with the Dockerfile.
+# Thin wrapper — converts the already-built Docker base image to .sif. The Dockerfile
+# (docker/base/Dockerfile) is the single source of truth for package content; there is
+# no %post here. Requires the Docker image to exist
+# locally first (build it via docker/build_single.sh base).
+# This only has formal purpose now - the user can run apptainer directly on the docker images for preprocessing/analysis and spatialxenium
+
+
 
 %labels
     maintainer zemw@novonordisk.com
     description Base R 4.5.2 / Bioc 3.22 environment with Seurat — binary-package build
     version 4.5.2
-
-%post
-    set -e
-
-    # Pin P3M binary repos (CRAN) + redirect-free P3M Bioc mirror, and parallel make.
-    UBUNTU_CODENAME=noble
-    CRAN_DATE=2026-06-15
-    BIOC_RELEASE=3.22
-    P3M=https://packagemanager.posit.co
-    CRAN_BINARY=${P3M}/cran/__linux__/${UBUNTU_CODENAME}/${CRAN_DATE}
-    BIOC_SOFT=${P3M}/bioconductor/__linux__/${UBUNTU_CODENAME}/packages/${BIOC_RELEASE}/bioc
-    BIOC_ANN=${P3M}/bioconductor/packages/${BIOC_RELEASE}/data/annotation
-    BIOC_EXP=${P3M}/bioconductor/packages/${BIOC_RELEASE}/data/experiment
-
-    . /etc/os-release
-    [ "$VERSION_CODENAME" = "$UBUNTU_CODENAME" ] || { echo "CODENAME MISMATCH: $VERSION_CODENAME"; exit 1; }
-
-    printf "options(repos = c(BioCsoft='%s', BioCann='%s', BioCexp='%s', CRAN='%s'), Ncpus = parallel::detectCores())\n" \
-        "$BIOC_SOFT" "$BIOC_ANN" "$BIOC_EXP" "$CRAN_BINARY" >> /usr/local/lib/R/etc/Rprofile.site
-    printf "MAKEFLAGS=-j%s\n" "$(nproc)" >> /usr/local/lib/R/etc/Renviron.site
-
-    apt-get update && apt-get install -y --no-install-recommends \
-        libcurl4-openssl-dev libssl-dev libxml2-dev libgit2-dev \
-        libfontconfig1-dev libharfbuzz-dev libfribidi-dev libfreetype6-dev \
-        libpng-dev libtiff5-dev libjpeg-dev libhdf5-dev libudunits2-dev \
-        libgdal-dev libgeos-dev libproj-dev libfftw3-dev libgsl-dev \
-        libcairo2-dev librsvg2-dev libprotobuf-dev protobuf-compiler \
-        libglpk-dev pkg-config cmake git wget build-essential \
-        libnode-dev zlib1g-dev \
-        && rm -rf /var/lib/apt/lists/*
-
-    # All installs go through the P3M repos set above (no repos=, no dependencies=TRUE).
-    R -e "install.packages(c('devtools', 'remotes', 'BiocManager', 'renv'))"
-    R -e "install.packages(c('Rcpp', 'RcppArmadillo', 'RcppEigen', 'RcppAnnoy', 'RcppHNSW', 'RcppProgress', 'RcppRoll', 'RcppTOML', 'RcppML'))"
-    R -e "install.packages('Matrix')"
-    R -e "install.packages(c('tidyverse', 'dplyr', 'tidyr', 'tibble', 'purrr', 'stringr', 'ggplot2', 'readr', 'readxl', 'data.table', 'reshape2', 'plyr', 'yaml', 'magrittr'))"
-    R -e "install.packages(c('ggrepel', 'ggridges', 'cowplot', 'patchwork', 'scales', 'viridis', 'viridisLite', 'RColorBrewer', 'Cairo'))"
-    R -e "install.packages(c('irlba', 'RSpectra', 'Rtsne', 'uwot', 'FNN', 'RANN', 'igraph', 'leiden', 'future', 'future.apply', 'progressr'))"
-    R -e "install.packages('hdf5r')"
-    R -e "install.packages(c('rhdf5', 'Rhdf5lib', 'HDF5Array'))"
-    R -e "install.packages(c('BiocGenerics', 'S4Vectors', 'IRanges', 'GenomeInfoDb', 'GenomicRanges', 'Biobase', 'SummarizedExperiment', 'SingleCellExperiment', 'DelayedArray', 'DelayedMatrixStats', 'BiocNeighbors', 'BiocSingular', 'beachmat', 'ScaledMatrix'))"
-    R -e "install.packages(c('SeuratObject', 'Seurat', 'sctransform'))"
-    R -e "library(Seurat); library(SingleCellExperiment); library(tidyverse); cat('OK Seurat', as.character(packageVersion('Seurat')), '\n')"
 
 %environment
     export LC_ALL=C
@@ -66,4 +24,5 @@ From: rocker/r-ver:4.5.2
 
 %help
     Base R 4.5.2 environment (Bioconductor 3.22) with Seurat and common dependencies.
+    Built from Docker image nnclinssoap/scrnaseq-base:4.5.2 (single source of truth).
     Used as the base for scrnaseq-preprocessing, scrnaseq-analysis, and scrnaseq-spatialxenium.

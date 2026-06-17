@@ -16,5 +16,5 @@ From: nnclinssoap/scrnaseq-preprocessing:4.5.2
 
 %help
     Preprocessing environment (R 4.5.2, Bioconductor 3.22)
-    Key packages: Seurat 5.1, SoupX, scDblFinder, harmony, DropletUtils, whirl
+    Key packages: Seurat 5.1, SoupX, scDblFinder, harmony, DropletUtils
     Built from Docker image nnclinssoap/scrnaseq-preprocessing:4.5.2

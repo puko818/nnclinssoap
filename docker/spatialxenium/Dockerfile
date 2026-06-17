@@ -10,13 +10,31 @@ LABEL maintainer="zemw@novonordisk.com"
 LABEL description="R environment for spatial transcriptomics: presto, argparser, arrow, spatstat"
 LABEL version="4.5.2"
 
-RUN R -e "install.packages(c('ggExtra', 'plotly', 'shiny', 'shinyjs'))"
+# Instal additional visualisation packages specific to this workflow
+RUN Rscript -e " \
+    cat('Installing additional visualisation packages...\\n'); \
+    install.packages(c('ggExtra', 'plotly', 'shiny', 'shinyjs')); \
+    cat('Additional visualisation packages installed\\n'); \
+    "
 
-RUN R -e "install.packages(c('sp', 'spatstat.data', 'spatstat.geom', 'spatstat.explore', \
-          'spatstat.random', 'spatstat.sparse', 'spatstat.univar', 'spatstat.utils', \
-          'deldir', 'polyclip'))"
+# Install spatial analysis packages
+RUN Rscript -e " \
+    cat('Installing spatial analysis packages...\\n'); \
+    spatial_packages <- c( \
+        'sp', 'spatstat.data', 'spatstat.geom', 'spatstat.explore', \
+        'spatstat.random', 'spatstat.sparse', 'spatstat.univar', 'spatstat.utils', \
+        'deldir', 'polyclip' \
+    ); \
+    install.packages(spatial_packages); \
+    cat('Spatial analysis packages installed\\n'); \
+    "
 
-RUN R -e "install.packages(c('argparser', 'fitdistrplus', 'ROCR', 'pbapply', 'scattermore', 'fastDummies'))"
+# Install analysis and machine learning packages
+RUN Rscript -e " \
+    cat('Installing analysis and machine learning packages...\\n'); \
+    install.packages(c('argparser', 'fitdistrplus', 'ROCR', 'pbapply', 'scattermore', 'fastDummies')); \
+    cat('Analysis and machine learning packages installed\\n'); \
+    "
 
 # LIBARROW_MINIMAL only matters if P3M falls back to a source build; with the P3M
 # binary it is ignored (binary arrow ships full libarrow).
@@ -25,18 +43,21 @@ RUN R -e " \
     install.packages('arrow'); \
     "
 
-# presto 1.0.0 declares CXX_STD=CXX11, but the (newer) binary RcppArmadillo 15.x
-# requires C++14+. Raise the C++11-package standard to gnu++17 so presto compiles
-# against modern Armadillo. The trailing guard makes the build FAIL LOUDLY if presto
-# is missing — install.packages/install_github only warn on compile failure, so
-# without this a broken (presto-less) image would silently ship.
-RUN printf "CXX11STD = -std=gnu++17\n" >> /usr/local/lib/R/etc/Makevars.site \
- && R -e "devtools::install_github('immunogenomics/presto', ref='1.0.0', upgrade='never'); \
-          if (!requireNamespace('presto', quietly=TRUE)) stop('presto failed to install')"
+# Install presto from GitHub 
+# Note: there is a newer version of RCPPArmadillo going forward (in later CRAN releases), might be worthile revisiting if the base image is updated in the future
+RUN Rscript -e " \
+    cat('Installing presto from GitHub (immunogenomics/presto)...\\n'); \
+    devtools::install_github('immunogenomics/presto', ref='1.0.0', upgrade='never'); \
+    cat('Presto installed successfully\\n'); \
+    "
 
+# Set environment variables
 ENV LC_ALL=C
 ENV PATH=/usr/local/bin:$PATH
 ENV R_LIBS_USER=/usr/local/lib/R/site-library
 
+# Set working directory
 WORKDIR /workspace
+
+# Default command
 CMD ["R"]

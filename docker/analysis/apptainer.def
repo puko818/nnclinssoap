@@ -16,5 +16,5 @@ From: nnclinssoap/scrnaseq-analysis:4.5.2
 
 %help
     Analysis environment (R 4.5.2, Bioconductor 3.22)
-    Key packages: Azimuth, SingleR, celldex, edgeR, limma, DESeq2, Signac, whirl
+    Key packages: Azimuth, SingleR, celldex, edgeR, limma, DESeq2, Signac
     Built from Docker image nnclinssoap/scrnaseq-analysis:4.5.2

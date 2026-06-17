@@ -2,7 +2,7 @@
 
 # Build Single Container Script
 # Quick build for testing individual containers
-# Usage: ./build_single.sh [preprocessing|analysis|spatialxenium|qc-report]
+# Usage: ./build_single.sh [base|preprocessing|analysis|spatialxenium|qc-report]
 
 set -e
 
@@ -27,7 +27,7 @@ warning() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 IMAGE_TYPE=$1
 
 if [ -z "$IMAGE_TYPE" ]; then
-    echo -e "${RED}Usage: $0 [preprocessing|analysis|spatialxenium|qc-report]${NC}"
+    echo -e "${RED}Usage: $0 [base|preprocessing|analysis|spatialxenium|qc-report]${NC}"
     exit 1
 fi
 
@@ -109,8 +109,26 @@ if [ "$BUILD_TYPE" = "docker" ]; then
     
 else
     # Singularity/Apptainer build
+    # Priority: apptainer.def > Dockerfile
     if [ -f "apptainer.def" ]; then
         log "Using apptainer.def"
+
+        # A thin `Bootstrap: docker-daemon` def converts an existing Docker image, so
+        # build that image from the Dockerfile first. Self-contained defs (e.g.
+        # qc-report, which bootstraps python + %post) skip this and build directly.
+        if grep -q "^Bootstrap: docker-daemon" apptainer.def && [ -f "Dockerfile" ]; then
+            if [ "$IMAGE_TYPE" = "qc-report" ]; then
+                DOCKER_TAG="nnclinssoap/${IMAGE_TYPE}:1.0"
+            else
+                DOCKER_TAG="nnclinssoap/scrnaseq-${IMAGE_TYPE}:${VERSION}"
+            fi
+            log "Building Docker image ${DOCKER_TAG} (required by docker-daemon def)..."
+            docker build -t "${DOCKER_TAG}" . 2>&1 | tee "${LOG_FILE}.docker"
+            if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+                error "Docker build failed for ${DOCKER_TAG} — see ${LOG_FILE}.docker"
+            fi
+        fi
+
         if ${CONTAINER_CMD} build --force \
             "${IMAGE_OUTPUT}/${OUTPUT_NAME}" \
             apptainer.def \
@@ -120,17 +138,17 @@ else
                 BUILD_SUCCESS=true
             fi
         fi
-            
+
     elif [ -f "Dockerfile" ]; then
         log "Found Dockerfile - will build via Docker and convert"
-        
+
         if command -v docker &> /dev/null; then
             log "Building with Docker..."
-            if docker build -t "nnclinssoap/${IMAGE_TYPE}:${VERSION}" . 2>&1 | tee "${LOG_FILE}.docker"; then
+            if docker build -t "nnclinssoap/scrnaseq-${IMAGE_TYPE}:${VERSION}" . 2>&1 | tee "${LOG_FILE}.docker"; then
                 log "Converting to Singularity format..."
                 if ${CONTAINER_CMD} build --force \
                     "${IMAGE_OUTPUT}/${OUTPUT_NAME}" \
-                    "docker-daemon://nnclinssoap/${IMAGE_TYPE}:${VERSION}" \
+                    "docker-daemon://nnclinssoap/scrnaseq-${IMAGE_TYPE}:${VERSION}" \
                     2>&1 | tee -a "${LOG_FILE}"; then
                     # Verify file was created
                     if [ -f "${IMAGE_OUTPUT}/${OUTPUT_NAME}" ]; then
