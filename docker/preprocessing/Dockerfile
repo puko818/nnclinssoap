@@ -22,13 +22,13 @@ LABEL version="4.5.2"
 # Install preprocessing-specific Bioconductor packages
 RUN Rscript -e "\
     cat('Installing preprocessing packages...\\n'); \
-    install.packages(c('DropletUtils', 'scDblFinder', 'glmGamPoi', 'bluster'))\ 
+    install.packages(c('DropletUtils', 'scDblFinder', 'glmGamPoi', 'bluster')); \ 
     cat('Preprocessing packages installed\\n'); \
 "
 # Install annotation packages
 RUN Rscript -e " \
     cat('Installing annotation packages...\\n'); \
-    install.packages(c('org.Hs.eg.db', 'AnnotationDbi', 'GO.db', 'KEGGREST'))\ 
+    install.packages(c('org.Hs.eg.db', 'AnnotationDbi', 'GO.db', 'KEGGREST')); \ 
     cat('Annotation packages installed\\n'); \
 "
 

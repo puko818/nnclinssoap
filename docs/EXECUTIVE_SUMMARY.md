@@ -1,5 +1,5 @@
 # Executive Summary: nnclinssoap Repository Integration
-
+**Update:** This is forked version of the repo with changes in infrastructure, and this document requires updating
 **Date:** December 30, 2025  
 Spatial Transcriptomics Pipeline Containerization & Integration  
 

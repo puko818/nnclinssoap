@@ -20,6 +20,7 @@ process SCRNASEQ_INTEGRATE {
         --sample_ids         "${ids_list}" \\
         --integration_method ${params.integration_method} \\
         --cluster_resolution ${params.cluster_resolution} \\
+        --integration_resolution ${params.integration_resolution} \\
         --outdir             .
 
     cat <<-END_VERSIONS > versions.yml

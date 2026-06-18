@@ -1,16 +1,16 @@
 Container Build Manifest - nnclinssoap
 ======================================
-Build Date: 2026-06-16 19:38:52
+Build Date: 2026-06-17 16:56:12
 R Version: 4.5.2
 Bioconductor: 3.22
 Builder: Docker version 25.0.14, build 0bab007
 
 Images Built:
 -------------
-✅ nnclinssoap/scrnaseq-base:4.5.2 (2.32GB)
-✅ nnclinssoap/scrnaseq-preprocessing:4.5.2 (2.99GB)
-✅ nnclinssoap/scrnaseq-analysis:4.5.2 (4.33GB)
-✅ nnclinssoap/scrnaseq-spatialxenium:4.5.2 (2.43GB)
+✅ nnclinssoap/scrnaseq-base:4.5.2 (2.59GB)
+✅ nnclinssoap/scrnaseq-preprocessing:4.5.2 (3.19GB)
+✅ nnclinssoap/scrnaseq-analysis:4.5.2 (4.55GB)
+✅ nnclinssoap/scrnaseq-spatialxenium:4.5.2 (2.70GB)
 ✅ nnclinssoap/qc-report:1.0 (0.18GB)
 
 Image Details:
@@ -22,12 +22,12 @@ Image Details:
 
 1. scrnaseq-preprocessing_4.5.2.sif
    - Purpose: Initial QC, doublet detection, ambient RNA removal
-   - Key packages: SoupX, scDblFinder, harmony, DropletUtils, whirl
+   - Key packages: SoupX, scDblFinder, harmony, DropletUtils
    - Source: docker/preprocessing/
 
 2. scrnaseq-analysis_4.5.2.sif
    - Purpose: Cell type annotation, differential expression
-   - Key packages: Azimuth, SingleR, edgeR, Signac, whirl
+   - Key packages: Azimuth, SingleR, edgeR, Signac
    - Source: docker/analysis/
 
 3. scrnaseq-spatialxenium_4.5.2.sif
@@ -42,7 +42,7 @@ Image Details:
 
 Build Logs:
 -----------
-docker/logs/build_*_20260616.log
+docker/logs/build_*_20260617.log
 
 Repository Structure:
 ---------------------

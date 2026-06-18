@@ -51,6 +51,7 @@ run_edgeR <- function(seurat_obj, cell_type, outdir) {
   cell_type_label <- gsub(" ", "_", cell_type)
 
   s_celltype <- subset(seurat_obj, subset = type == cell_type)
+  # Keep only samples with at least 5 cells of this cell type (in every visit)
   sample_counts <- table(s_celltype$patient_id, s_celltype$visit)
   keep_samples  <- names(which(apply(sample_counts, 1, min) >= 5))
 
@@ -59,6 +60,7 @@ run_edgeR <- function(seurat_obj, cell_type, outdir) {
     return(NULL)
   }
 
+  # Subset to the remaining samples
   s_subset <- subset(s_celltype, subset = patient_id %in% keep_samples)
 
   if (length(unique(s_subset$patient_id[s_subset$arm == "placebo"])) < 2 ||
@@ -67,9 +69,11 @@ run_edgeR <- function(seurat_obj, cell_type, outdir) {
     return(NULL)
   }
 
+  # Pseudo-bulk: aggregate counts per (arm, patient, visit, sex, age)
   s_bulk <- AggregateExpression(s_subset, return.seurat = TRUE, assays = "RNA",
                                 group.by = c("arm", "patient_id", "visit", "sex", "age"))
 
+  # Counts matrix + metadata; rebuild the grouping columns by splitting the aggregated row names on "_"
   pseudo_mat <- as.matrix(GetAssayData(s_bulk, layer = "counts"))
   meta       <- s_bulk@meta.data
   split_df   <- do.call(rbind, strsplit(rownames(meta), "_"))
@@ -81,20 +85,25 @@ run_edgeR <- function(seurat_obj, cell_type, outdir) {
 
   y      <- DGEList(counts = pseudo_mat, samples = meta,
                     group = interaction(meta$arm, meta$visit))
+  # Design: start with patient effects (account for between-patient variation),
+  # then add the post (eot) vs pre (bl) treatment effect within each arm.
   design <- model.matrix(~patient_id, data = meta)
   placebo_post <- meta$arm == "placebo"    & meta$visit == "eot"
   trt_post     <- meta$arm == "treatment"  & meta$visit == "eot"
   design <- cbind(design, placebo_post, trt_post)
 
+  # Keep genes expressed in ~>=25% of samples at 1 CPM
   y   <- y[filterByExpr(y, design), ]
   y   <- normLibSizes(y)
-  y   <- estimateDisp(y, design)
+  y   <- estimateDisp(y, design)   # dispersion estimation
   fit <- glmQLFit(y, design)
 
   pdf(file.path(outdir, paste0(cell_type_label, "_bcv.pdf")), height = 6, width = 10)
   print(plotBCV(y))
   dev.off()
 
+  # Interaction contrast (trt_post - placebo_post): genes responding differently
+  # to treatment vs placebo over time (arm x time-point interaction).
   qlf.interaction <- glmQLFTest(fit, contrast = c(0, rep(0, ncol(design) - 3), -1, 1))
   counts_norm     <- edgeR::cpm(y, log = TRUE, prior.count = 3)
   write.csv(rownames_to_column(as.data.frame(counts_norm), var = "gene"),

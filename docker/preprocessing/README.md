@@ -80,13 +80,13 @@ This Docker image is designed for the preprocessing workflow of single-cell RNA-
 
 ```bash
 # Build the image
-docker build -t scrnaseq-seurat-soupx-harmony:4.5.2 .
+docker build -t nnclinssoap/scrnaseq-preprocessing:4.5.2 .
 
 # Run interactively
-docker run -it --rm -v $(pwd):/workspace scrnaseq-seurat-soupx-harmony:4.5.2
+docker run -it --rm -v $(pwd):/workspace nnclinssoap/scrnaseq-preprocessing:4.5.2
 
 # Run a script
-docker run --rm -v $(pwd):/workspace scrnaseq-seurat-soupx-harmony:4.5.2 Rscript preprocessing_workflow.R
+docker run --rm -v $(pwd):/workspace nnclinssoap/scrnaseq-preprocessing:4.5.2 Rscript preprocessing_workflow.R
 ```
 
 ## Workflow Compatibility

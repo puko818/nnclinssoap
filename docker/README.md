@@ -102,7 +102,7 @@
 | analysis | Annotation, differential expression | ~10 min | ~4.7 GB |
 | spatialxenium | Spatial transcriptomics | ~1 min | ~2.6 GB |
 
-**Total:** ~20 min (binary-package build via Posit P3M; see CLAUDE.md)
+**Total:** ~20 min (binary-package build via Posit P3M, tested with 16vCPUs+128GB RAM)
 
 ### Requirements
 

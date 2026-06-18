@@ -38,6 +38,7 @@ rds_paths          <- strsplit(args$rds_files, ",")[[1]]
 sample_ids         <- strsplit(args$sample_ids, ",")[[1]]
 integration_method <- args$integration_method %||% "harmony"
 cluster_resolution <- as.numeric(args$cluster_resolution %||% "0.6")
+integration_resolution <- as.numeric(args$integration_resolution %||% "0.5")
 outdir             <- args$outdir %||% "."
 
 dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
@@ -73,8 +74,13 @@ if (integration_method == "harmony") {
   )
   dev.off()
 
+  # Genes correlated with the harmonized PCs
+  pdf(file.path(outdir, "Harmony_PCsvsGenes.pdf"), width = 12, height = 8)
+  DimHeatmap(AllNN, reduction = "harmony", cells = 500, dims = 1:5)
+  dev.off()
+
   AllNN <- FindNeighbors(AllNN, reduction = "harmony", dims = 1:30)
-  AllNN <- FindClusters(AllNN, resolution = cluster_resolution)
+  AllNN <- FindClusters(AllNN, resolution = integration_resolution)
   AllNN <- RunUMAP(AllNN, reduction = "harmony", dims = 1:30)
 
   pdf(file.path(outdir, "Harmony_UMAP.pdf"), width = 12, height = 8)
@@ -114,6 +120,8 @@ if (integration_method == "harmony") {
   integrated <- ScaleData(integrated)
   integrated <- RunPCA(integrated, features = VariableFeatures(integrated))
 
+  # Choose number of PCs (min of two heuristics): cumulative > 90% with <5% per-PC,
+  # and the last PC where successive %-variation drop still exceeds 0.1%.
   pct  <- integrated[["pca"]]@stdev / sum(integrated[["pca"]]@stdev) * 100
   cumu <- cumsum(pct)
   co1  <- which(cumu > 90 & pct < 5)[1]

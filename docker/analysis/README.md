@@ -106,16 +106,16 @@ This Docker image is designed for downstream analysis of preprocessed single-cel
 
 ```bash
 # Build the image
-docker build -t scrnaseq-azimuth-singler-edger:4.5.2 .
+docker build -t nnclinssoap/scrnaseq-analysis:4.5.2 .
 
 # Run interactively
-docker run -it --rm -v $(pwd):/workspace scrnaseq-azimuth-singler-edger:4.5.2
+docker run -it --rm -v $(pwd):/workspace nnclinssoap/scrnaseq-analysis:4.5.2
 
 # Run cell annotation script
-docker run --rm -v $(pwd):/workspace scrnaseq-azimuth-singler-edger:4.5.2 Rscript cell_annotation.R
+docker run --rm -v $(pwd):/workspace nnclinssoap/scrnaseq-analysis:4.5.2 Rscript cell_annotation.R
 
 # Run differential expression script
-docker run --rm -v $(pwd):/workspace scrnaseq-azimuth-singler-edger:4.5.2 Rscript de_analysis.R
+docker run --rm -v $(pwd):/workspace nnclinssoap/scrnaseq-analysis:4.5.2 Rscript de_analysis.R
 ```
 
 ## Workflow Compatibility

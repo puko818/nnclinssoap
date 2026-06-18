@@ -226,6 +226,14 @@ nextflow run main.nf \
 
 The test Xenium data is at `SpatialXenium/test_data/`. The test scrnaseq data is at `scrnaseq/test_data/donor{1,2,3,4}/sample_filtered_feature_bc_matrix.h5`. The `read_samples.txt` references these as `test_data/donor{1..4}` (relative paths from `scrnaseq/` dir) — use absolute paths when running from `SpatialXenium/`.
 
+### Xenium samplesheet format (`--input`)
+Comma-separated, two columns:
+```
+sample,xenium_path
+hKidney_cancer,test_data/Xenium_V1_hKidney_cancer_section_outs
+```
+`xenium_path` is the Xenium `..._outs` **directory**. The `test` profile auto-sets `--input assets/samplesheet.csv` (one `hKidney_cancer` sample) and `--genes assets/genes.txt`, so neither flag is needed under `-profile test`.
+
 ### scrnaseq samplesheet format
 Tab-separated with these exact column names (order matters):
 ```
@@ -243,6 +251,7 @@ donor01-bl	test_data/donor1	donor01	bl	placebo	M	68
 |---|---|---|
 | `scrnaseq_input` | `null` | Path to scrnaseq TSV samplesheet. If null, scrnaseq workflow is skipped. |
 | `input_type` | `h5_filtered` | Matrix format: `mtx`, `h5_filtered`, `h5_raw_filtered` |
+| `do_empty_drop` | `true` | Run `emptyDropsCellRanger` (mtx / h5_filtered modes only; h5_raw_filtered uses SoupX instead). Default flipped `false`→`true` to match upstream `DoEmptyDrop`. |
 | `integration_method` | `harmony` | `harmony` or `rpca` |
 | `annotation_method` | `Azimuth` | `Azimuth` or `SingleR` |
 | `azimuth_ref` | `pbmcref` | Azimuth reference (must be installed in container) |
@@ -253,6 +262,13 @@ donor01-bl	test_data/donor1	donor01	bl	placebo	M	68
 | `n_features_min` | `500` | Lower nFeature_RNA filter |
 | `percent_mt_cutoff` | `10` | Max mitochondrial % |
 | `cluster_resolution` | `0.6` | Louvain resolution |
+
+**Annotation column pass-through (integrated mode).** In integrated mode (`--scrnaseq_input` set) the reference RDS is produced internally, so `main.nf` auto-resolves the column names by `annotation_method`. For Azimuth it now **honors an explicit choice** instead of hard-forcing `l1`:
+- `--single_cell_label_col predicted.celltype.l2` → drives **LABEL_TRANSFER** at l2 (any `predicted.celltype.*`; otherwise defaults to `l1`).
+- `--de_annotation predicted.celltype.l2` → drives **DE** grouping (defaults to `l1`).
+- SingleR ignores both and uses `main_labels` (the only column it emits).
+
+This makes the integrated run parameter-equivalent to the upstream two-step (whirl scrnaseq → spatialxenium) for benchmark comparison: upstream used **DE at l1** (`de_annotation: predicted.celltype.l1`) but **label transfer at l2** (`--single_cell_label_col predicted.celltype.l2`).
 
 ---
 

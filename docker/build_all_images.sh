@@ -131,8 +131,7 @@ build_container() {
             log "Using apptainer.def"
 
             # A thin `Bootstrap: docker-daemon` def converts an existing Docker image,
-            # so build that image from the Dockerfile first. Self-contained defs (e.g.
-            # qc-report, which bootstraps python + %post) skip this and build directly.
+            # so build that image from the Dockerfile first. qc-report is build directly (no need to generate docker image first)
             if grep -q "^Bootstrap: docker-daemon" apptainer.def && [ -f "Dockerfile" ]; then
                 if [ "$name" = "qc-report" ]; then
                     local docker_tag="nnclinssoap/${name}:1.0"

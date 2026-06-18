@@ -49,13 +49,25 @@ workflow NFCORE_SPATIALXENIUM {
 
     // Resolve label column and DE annotation column.
     // In integrated mode (scrnaseq_input set), the reference RDS is always produced by the
-    // pipeline so column names are fixed by annotation_method — always auto-select.
+    // pipeline so column names are fixed by annotation_method. LABEL_TRANSFER always uses the
+    // top-level column (l1 / main_labels). DE honours params.de_annotation for Azimuth so the
+    // user can group pseudo-bulk at a finer resolution (e.g. predicted.celltype.l2); SingleR
+    // only emits 'main_labels', so predicted.celltype.* is not available there.
     // In manual mode (reference_rds), use single_cell_label_col as-is.
     def label_col = params.single_cell_label_col
     def de_annotation_col = params.de_annotation
     if (params.scrnaseq_input) {
-        label_col = (params.annotation_method == 'Azimuth') ? 'predicted.celltype.l1' : 'main_labels'
-        de_annotation_col = (params.annotation_method == 'Azimuth') ? 'predicted.celltype.l1' : 'main_labels'
+        if (params.annotation_method == 'Azimuth') {
+            // Azimuth emits predicted.celltype.l1/l2/l3. Honour an explicit predicted.celltype.*
+            // choice (e.g. --single_cell_label_col predicted.celltype.l2 for label transfer),
+            // otherwise auto-default to l1. DE likewise honours --de_annotation (default l1).
+            label_col         = params.single_cell_label_col?.startsWith('predicted.celltype.') ? params.single_cell_label_col : 'predicted.celltype.l1'
+            de_annotation_col = params.de_annotation
+        } else {
+            // SingleR only emits 'main_labels'; predicted.celltype.* is not available.
+            label_col         = 'main_labels'
+            de_annotation_col = 'main_labels'
+        }
     }
 
     if (params.scrnaseq_input) {

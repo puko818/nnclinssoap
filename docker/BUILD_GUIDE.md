@@ -19,15 +19,15 @@ This guide provides step-by-step instructions for building the nnclinssoap conta
 | **analysis** | Cell annotation, differential expression | Azimuth, SingleR, edgeR, Signac | ~10 min |
 | **spatialxenium** | Spatial transcriptomics analysis | presto, Seurat, argparser, arrow | ~1 min |
 
-*Binary-package build (Posit P3M) — the whole R stack builds in ~20 min. Times
-vary with system resources and network speed. See CLAUDE.md "Binary-package build"
-for how this works (and why we don't use bioconductor.org directly).
+*Binary-package build (Posit P3M) — the whole stack builds in ~20 min. Times
+vary with system resources and network speed. The docker image creation was benchmarked at AWS EC2 instance (r6i.4xlarge, 16vCPUs and 128 GB memory)
 
 ---
 
 ## Prerequisites
 
 ### Required Software
+Note: this is now changed in this forked version - the docker image creation is prioritized (using the base image creation first and all the other dockers importing it to minimize the build time). Below is the original version of this document.
 
 1. **Apptainer/Singularity** (primary method)
    ```bash
@@ -78,7 +78,6 @@ sbatch docker/build_all_images.sh
 ### Network Dependencies
 
 The build process downloads packages from:
-- **CRAN:** Posit P3M binary repo `https://packagemanager.posit.co/cran/__linux__/noble/<date>`
 - **Bioconductor:** Posit P3M Bioc mirror `https://packagemanager.posit.co/bioconductor/...` (redirect-free; **not** bioconductor.org, whose index can hang from some networks)
 - **GitHub:** `https://github.com/` (for presto, Azimuth, etc.)
   - **Important:** GitHub has rate limits (60 requests/hour unauthenticated)

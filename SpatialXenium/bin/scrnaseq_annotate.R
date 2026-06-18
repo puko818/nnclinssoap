@@ -50,6 +50,15 @@ s <- readRDS(input_rds)
 if (annotation_method == "SingleR") {
   s <- JoinLayers(s)
   Idents(s) <- s$seurat_clusters
+
+  # Log fold-change distribution (cluster 0 vs 1) to inform the marker threshold
+  logfc_dist <- FindMarkers(s, ident.1 = 0, ident.2 = 1, logfc.threshold = 0.1, min.pct = 0.01)
+  pdf(file.path(outdir, "lfc_distribution.pdf"), width = 12, height = 10)
+  print(ggplot(logfc_dist, aes(x = avg_log2FC)) +
+    geom_histogram(bins = 50) +
+    labs(title = "Distribution of Log Fold Changes", x = "Log Fold Change", y = "Frequency"))
+  dev.off()
+
   rna.markers <- FindAllMarkers(s, logfc.threshold = log(1), only.pos = TRUE, min.diff.pct = 0.3)
   write.csv(rna.markers, file.path(outdir, "findall_markers_singleR.csv"))
 
@@ -118,10 +127,12 @@ if (annotation_method == "SingleR") {
   ))
   dev.off()
 
-  pdf(file.path(outdir, "azimuth_ref_umap.pdf"), width = 20, height = 10)
-  print(DimPlot(s, reduction = "ref.umap", group.by = "predicted.celltype.l2",
-                label = TRUE, label.size = 3) + NoLegend())
-  dev.off()
+  for (lvl in c("l1", "l2", "l3")) {
+    pdf(file.path(outdir, paste0("azimuth-umap-", lvl, ".pdf")), width = 20, height = 10)
+    print(DimPlot(s, reduction = "ref.umap", group.by = paste0("predicted.celltype.", lvl),
+                  label = TRUE, label.size = 3) + NoLegend())
+    dev.off()
+  }
 
   df         <- data.frame(label = s$predicted.celltype.l2, score = s$predicted.celltype.l2.score)
   cell_count <- data.frame(table(s$predicted.celltype.l2))
@@ -134,10 +145,21 @@ if (annotation_method == "SingleR") {
   print(VlnPlot(s, features = "predicted.celltype.l2.score") + NoLegend())
   dev.off()
 
+  iqr_prediction_score <- IQR(df$score)
+  cat("IQR of prediction scores:", iqr_prediction_score, "\n")
+
   pdf(file.path(outdir, "IQR_boxplot.pdf"), width = 20, height = 10)
+  print(ggplot(df, aes(x = label, y = score)) +
+    geom_boxplot() +
+    labs(x = "", y = "Prediction Score") +
+    ggtitle("Box Plot of Prediction Scores") +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1)))
+  dev.off()
+
+  pdf(file.path(outdir, "boxplot_Labelcount_scores.pdf"), width = 18, height = 10)
   print(wrap_plots(
-    ggplot(df, aes(x = "", y = score)) + geom_boxplot() + labs(x = "", y = "Prediction Score"),
-    ggplot(cell_count, aes(x = "", y = count)) + geom_boxplot() + labs(x = "", y = "Cell count"),
+    ggplot(df, aes(x = "", y = score)) + geom_boxplot() + labs(x = "", y = "Prediction Score") + ggtitle("Label Scores"),
+    ggplot(cell_count, aes(x = "", y = count)) + geom_boxplot() + labs(x = "", y = "Cell count") + ggtitle("Cell count"),
     ncol = 2
   ))
   dev.off()

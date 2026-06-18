@@ -17,7 +17,7 @@ library(glmGamPoi)
 library(org.Hs.eg.db)
 library(reshape2)
 
-# Simple named arg parser (no package dependencies)
+# we are not using yml configuration from whirl in this version, commands are populated into command line and parsed with arg parser
 `%||%` <- function(a, b) if (!is.null(a) && !is.na(a) && a != "") a else b
 
 parse_args <- function() {
@@ -77,12 +77,13 @@ if (input_type == "mtx") {
     features = file.path(sample_path, "sample_filtered_feature_bc_matrix/features.tsv"),
     feature.column = 1
   )
+
+  # Extract current ENSG IDs from the matrix and map to gene symbols
   ensembl_ids       <- rownames(counts)
   ensembl_ids_clean <- gsub("\\..*$", "", ensembl_ids)
-  gene_symbols      <- mapIds(org.Hs.eg.db, keys = ensembl_ids_clean,
-                              column = "SYMBOL", keytype = "ENSEMBL", multiVals = "first")
-  new_names         <- ifelse(is.na(gene_symbols), ensembl_ids, gene_symbols)
-  rownames(counts)  <- make.unique(new_names)
+  gene_symbols      <- mapIds(org.Hs.eg.db, keys = ensembl_ids_clean, column = "SYMBOL", keytype = "ENSEMBL", multiVals = "first")
+  new_names         <- ifelse(is.na(gene_symbols), ensembl_ids, gene_symbols)  # keep Ensembl ID for genes that did not map
+  rownames(counts)  <- make.unique(new_names)                                  # make duplicate symbols unique
 
   if (do_empty_drop) {
     ret    <- DropletUtils::emptyDropsCellRanger(counts)
@@ -91,7 +92,7 @@ if (input_type == "mtx") {
       dplyr::filter(!is.na(FDR)) |>
       dplyr::mutate(Group = factor(ifelse(PValue < fdr_cutoff, "Cell", "EmptyDrop")))
     pdf(file.path(qc_dir, "EmptyDrop_Diag.pdf"), width = 10, height = 8)
-    print(ggplot(df, aes(x = Total, y = -LogProb, color = Group)) + geom_point(alpha = 0.5))
+    print(ggplot(df, aes(x = Total, y = -LogProb, color = Group)) + geom_point(alpha = 0.5) + labs(x = "Total UMI Count", y = "-Log Probability"))
     dev.off()
   }
 
@@ -101,13 +102,14 @@ if (input_type == "mtx") {
   counts <- if (is.list(hdf5)) hdf5[[modality_type]] else hdf5
 
   if (do_empty_drop) {
+    cat("Performing Empty Drop ... \n")
     ret    <- DropletUtils::emptyDropsCellRanger(counts)
     counts <- counts[, which(ret$FDR <= fdr_cutoff), drop = FALSE]
     df     <- as.data.frame(ret) |>
       dplyr::filter(!is.na(FDR)) |>
       dplyr::mutate(Group = factor(ifelse(PValue < fdr_cutoff, "Cell", "EmptyDrop")))
     pdf(file.path(qc_dir, "EmptyDrop_Diag.pdf"), width = 10, height = 8)
-    print(ggplot(df, aes(x = Total, y = -LogProb, color = Group)) + geom_point(alpha = 0.5))
+    print(ggplot(df, aes(x = Total, y = -LogProb, color = Group)) + geom_point(alpha = 0.5) + labs(x = "Total UMI Count", y = "-Log Probability"))
     dev.off()
   }
 
@@ -119,6 +121,18 @@ if (input_type == "mtx") {
     raw.matrix  <- raw.matrix[[modality_type]]
   }
 
+  # Barcode-rank plot (pre-ambient-removal)
+  barcode_umis_sorted <- sort(Matrix::colSums(filt.matrix), decreasing = TRUE)
+  brank_df <- data.frame(rank = seq_along(barcode_umis_sorted), total = barcode_umis_sorted)
+  pdf(file.path(qc_dir, "barcode_rank_before_ed.pdf"), width = 10, height = 8)
+  print(ggplot(brank_df, aes(x = rank, y = total)) +
+    geom_point(size = 0.5) +
+    scale_x_log10() + scale_y_log10() +
+    labs(title = "Barcode Rank Plot", x = "Barcode Rank", y = "Total UMI Count") +
+    theme_bw())
+  dev.off()
+
+  ## Remove ambient RNA with SoupX — cluster the filtered matrix to inform the soup channel
   srat <- CreateSeuratObject(counts = filt.matrix)
   srat <- SCTransform(srat, verbose = FALSE)
   srat <- RunPCA(srat, verbose = FALSE)
@@ -126,22 +140,27 @@ if (input_type == "mtx") {
   srat <- FindNeighbors(srat, dims = 1:30, verbose = FALSE)
   srat <- FindClusters(srat, verbose = FALSE)
 
+  # Adding clusters and the UMAP embedding to the soup channel
   soup.channel <- SoupChannel(tod = raw.matrix, toc = filt.matrix)
   soup.channel <- setClusters(soup.channel, setNames(srat@meta.data$seurat_clusters, rownames(srat@meta.data)))
   soup.channel <- setDR(soup.channel, srat@reductions$umap@cell.embeddings)
 
+  # Calculate ambient RNA profile; tryCatch so a failure falls back to the filtered matrix
   soup.channel <- tryCatch(autoEstCont(soup.channel), error = function(e) {
     message("autoEstCont failed: ", e$message, " — using filtered matrix as fallback")
     NULL
   })
 
+  # Proceed only if soup.channel is not NULL
   if (!is.null(soup.channel)) {
     pdf(file.path(qc_dir, "SoupX_contamination_densityPlot.pdf"), width = 10, height = 8)
     print(autoEstCont(soup.channel))
     dev.off()
-    counts <- adjustCounts(soup.channel, roundToInt = TRUE)
+    top_genes <- head(soup.channel$soupProfile[order(soup.channel$soupProfile$est, decreasing = TRUE), ], n = 20)
+    print(top_genes)
+    counts <- adjustCounts(soup.channel, roundToInt = TRUE)  # SoupX-adjusted counts
   } else {
-    counts <- filt.matrix
+    counts <- filt.matrix  # fallback if autoEstCont errored
   }
 }
 
@@ -153,8 +172,10 @@ s[["percent_mito"]] <- PercentageFeatureSet(s, pattern = "^MT-")
 s[["percent_ribo"]] <- PercentageFeatureSet(s, pattern = "^RPS|^RPL")
 s[["percent_plat"]] <- PercentageFeatureSet(s, "PECAM1|PF4")
 s[["complexity"]]   <- s$nFeature_RNA / s$nCount_RNA
+# Subset by min/max nFeature_RNA and percent mitochondrial RNA
 s <- subset(s, subset = nFeature_RNA < n_features_max & percent_mito < percent_mt_cutoff)
 
+# Add sample-level metadata
 s$patient_id <- participant
 s$visit      <- visit
 s$arm        <- arm
@@ -167,6 +188,7 @@ print(wrap_plots(
   VlnPlot(s, features = "nCount_RNA",    pt.size = 0),
   VlnPlot(s, features = "percent_mito",  pt.size = 0),
   VlnPlot(s, features = "percent_ribo",  pt.size = 0),
+  VlnPlot(s, features = "percent_plat",  pt.size = 0),
   VlnPlot(s, features = "complexity",    pt.size = 0),
   nrow = 2
 ))
@@ -185,13 +207,24 @@ print(ggplot(df_qc, aes(x = Value)) +
   facet_wrap(~Feature, scales = "free") + theme_minimal())
 dev.off()
 
+# Filter out MALAT1, mitochondrial (^MT-) and ribosomal (^RP[SL]) genes
 s <- s[!grepl("MALAT1", rownames(s)), ]
 s <- s[!grepl("^MT-",   rownames(s)), ]
 s <- s[!grepl("^RP[SL]", rownames(s)), ]
 
+# Gender check
+gender_genes <- intersect(c("XIST", "DDX3Y", "TTTY14"), rownames(s))
+if (length(gender_genes) > 0) {
+  pdf(file.path(qc_dir, "GenderCheck_VlnPlot.pdf"), width = 6, height = 10)
+  print(VlnPlot(s, features = gender_genes, pt.size = 0) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1)))
+  dev.off()
+}
+
 # 3. Normalize + cell cycle scoring --------------------------------------------
 cat("Normalizing...\n")
 s <- NormalizeData(s)
+# Cell cycle scoring — cells in S and G2M phase
 g2m       <- cc.genes$g2m.genes[cc.genes$g2m.genes %in% rownames(s)]
 s_features <- cc.genes$s.genes[cc.genes$s.genes %in% rownames(s)]
 s <- CellCycleScoring(s, g2m.features = g2m, s.features = s_features)
@@ -212,11 +245,22 @@ cat("Scaling and clustering...\n")
 s <- ScaleData(s, vars.to.regress = c("percent_mito", "S.Score", "G2M.Score"), verbose = FALSE)
 s <- RunPCA(s, verbose = FALSE, npcs = 30)
 
-pct  <- s[["pca"]]@stdev / sum(s[["pca"]]@stdev) * 100
-cumu <- cumsum(pct)
-co1  <- which(cumu > 90 & pct < 5)[1]
-co2  <- sort(which((pct[1:(length(pct)-1)] - pct[2:length(pct)]) > 0.1), decreasing = TRUE)[1] + 1
+pdf(file.path(qc_dir, "Heatmap_PCAPlot.pdf"))
+DimHeatmap(s, dims = 1:30, cells = 500, balanced = TRUE)
+dev.off()
+
+# Choose number of PCs (min of two heuristics):
+pct  <- s[["pca"]]@stdev / sum(s[["pca"]]@stdev) * 100   # % variation per PC
+cumu <- cumsum(pct)                                       # cumulative % variation
+co1  <- which(cumu > 90 & pct < 5)[1]                     # first PC past 90% cumulative with <5% on its own
+co2  <- sort(which((pct[1:(length(pct)-1)] - pct[2:length(pct)]) > 0.1), decreasing = TRUE)[1] + 1  # last PC where successive %-variation drop still > 0.1%
 pcs  <- min(co1, co2)
+
+pdf(file.path(qc_dir, "PCA_ElbowPlot.pdf"), width = 12, height = 8)
+print(ElbowPlot(s, ndims = pcs + 5) +
+      ggtitle(paste0("PCAs selected:", pcs)) +
+      theme(plot.title = element_text(hjust = 0.5)))
+dev.off()
 
 s <- FindNeighbors(s, dims = 1:pcs)
 s <- FindClusters(s, resolution = cluster_resolution)
@@ -248,7 +292,19 @@ print(wrap_plots(
 ))
 dev.off()
 
+# Set identity to doublet class so we can subset on it
 Idents(s) <- s$scDblFinder.class
+
+pdf(file.path(qc_dir, "VlnPlot_Doublet_vs_singlet.pdf"), width = 12, height = 8)
+print(
+  (VlnPlot(s, features = "nFeature_RNA", split.by = "scDblFinder.class", pt.size = 0) +
+     theme(axis.text.x = element_text(angle = 45, hjust = 1))) /
+  (VlnPlot(s, features = "nCount_RNA", split.by = "scDblFinder.class", pt.size = 0) +
+     theme(axis.text.x = element_text(angle = 45, hjust = 1)))
+)
+dev.off()
+
+# Keep only singlets
 s <- subset(s, idents = "singlet")
 
 # Save -------------------------------------------------------------------------
