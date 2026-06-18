@@ -7,6 +7,7 @@ library(harmony)
 library(ggplot2)
 library(patchwork)
 
+# custom operator definition
 `%||%` <- function(a, b) if (!is.null(a) && !is.na(a) && a != "") a else b
 
 parse_args <- function() {
@@ -36,6 +37,7 @@ args <- parse_args()
 # sample_ids: comma-separated sample IDs (same order as rds_files)
 rds_paths          <- strsplit(args$rds_files, ",")[[1]]
 sample_ids         <- strsplit(args$sample_ids, ",")[[1]]
+# use the value from the CLI args if one was actually given; otherwise fall back to the default "harmony"
 integration_method <- args$integration_method %||% "harmony"
 cluster_resolution <- as.numeric(args$cluster_resolution %||% "0.6")
 integration_resolution <- as.numeric(args$integration_resolution %||% "0.5")
@@ -50,7 +52,7 @@ if (!all(sapply(nn, is, "Seurat"))) stop("All inputs must be Seurat objects")
 
 # Harmony integration ----------------------------------------------------------
 if (integration_method == "harmony") {
-  cat("Performing Harmony integration...\n")
+  cat("Performing Harmony...\n")
 
   nn1      <- nn[[1]]
   nn_rest  <- nn[-1]
@@ -60,9 +62,12 @@ if (integration_method == "harmony") {
   AllNN <- NormalizeData(AllNN)
   AllNN <- FindVariableFeatures(AllNN, selection.method = "vst", nfeatures = 2000)
   AllNN <- ScaleData(AllNN)
+
+  # Run PCA
   AllNN <- RunPCA(AllNN, features = VariableFeatures(object = AllNN))
   AllNN$orig.ident <- paste0(AllNN$patient_id, "_", AllNN$visit)
 
+  # Run Harmony
   AllNN <- AllNN |>
     RunHarmony(group.by.vars = "orig.ident", plot_convergence = FALSE,
                nclust = 50, max_iter = 10, early_stop = TRUE)
@@ -74,11 +79,12 @@ if (integration_method == "harmony") {
   )
   dev.off()
 
-  # Genes correlated with the harmonized PCs
+  # Plot genes correlated with the harmonized PCs
   pdf(file.path(outdir, "Harmony_PCsvsGenes.pdf"), width = 12, height = 8)
-  DimHeatmap(AllNN, reduction = "harmony", cells = 500, dims = 1:5)
+  print(DimHeatmap(AllNN, reduction = "harmony", cells = 500, dims = 1:5))
   dev.off()
 
+  # Proceed with downstream analysis
   AllNN <- FindNeighbors(AllNN, reduction = "harmony", dims = 1:30)
   AllNN <- FindClusters(AllNN, resolution = integration_resolution)
   AllNN <- RunUMAP(AllNN, reduction = "harmony", dims = 1:30)
