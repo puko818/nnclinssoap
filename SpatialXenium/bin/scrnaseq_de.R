@@ -1,4 +1,5 @@
 #!/usr/bin/env Rscript
+# unused packages have been trimmed from this list in this version
 library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -10,8 +11,10 @@ library(edgeR)
 library(tibble)
 library(cowplot)
 
+# custom operator
 `%||%` <- function(a, b) if (!is.null(a) && !is.na(a) && a != "") a else b
 
+# this replaces the loading from yaml config that whirl used
 parse_args <- function() {
   raw <- commandArgs(trailingOnly = TRUE)
   result <- list()
@@ -49,18 +52,20 @@ cat("Running DE for", length(cell_types), "cell types\n")
 
 run_edgeR <- function(seurat_obj, cell_type, outdir) {
   cell_type_label <- gsub(" ", "_", cell_type)
-
+  # Subset cell type - the upstream implementation queries the global s object loaded outside of this function
   s_celltype <- subset(seurat_obj, subset = type == cell_type)
-  # Keep only samples with at least 5 cells of this cell type (in every visit)
+  
+  # Keep with min 5 cells
   sample_counts <- table(s_celltype$patient_id, s_celltype$visit)
   keep_samples  <- names(which(apply(sample_counts, 1, min) >= 5))
 
+  # use message func for error messages instead of print
   if (length(keep_samples) < 1) {
     message("Skipping ", cell_type, ": not enough cells per sample")
     return(NULL)
   }
 
-  # Subset to the remaining samples
+  # Subset remaining samples
   s_subset <- subset(s_celltype, subset = patient_id %in% keep_samples)
 
   if (length(unique(s_subset$patient_id[s_subset$arm == "placebo"])) < 2 ||
@@ -85,32 +90,46 @@ run_edgeR <- function(seurat_obj, cell_type, outdir) {
 
   y      <- DGEList(counts = pseudo_mat, samples = meta,
                     group = interaction(meta$arm, meta$visit))
-  # Design: start with patient effects (account for between-patient variation),
-  # then add the post (eot) vs pre (bl) treatment effect within each arm.
+
+
+  # Create the design matrix starting with patient effects (to account for between-patient variation)
   design <- model.matrix(~patient_id, data = meta)
+  
+  # Define the treatment effects for each arm
+  # These will capture the Pre vs Post effect within each arm
   placebo_post <- meta$arm == "placebo"    & meta$visit == "eot"
   trt_post     <- meta$arm == "treatment"  & meta$visit == "eot"
+  
+  # Add these effects to the design matrix
   design <- cbind(design, placebo_post, trt_post)
 
-  # Keep genes expressed in ~>=25% of samples at 1 CPM
+  # Determine genes expressed in at least 25% of samples at 1 CPM threshold
   y   <- y[filterByExpr(y, design), ]
+  
+  # Normalize
   y   <- normLibSizes(y)
+
+  # Estimate dispersion factors and run lm
   y   <- estimateDisp(y, design)   # dispersion estimation
   fit <- glmQLFit(y, design)
 
   pdf(file.path(outdir, paste0(cell_type_label, "_bcv.pdf")), height = 6, width = 10)
-  print(plotBCV(y))
+  print(plotBCV(y, xlab="Average log CPM", ylab="Biological coefficient of variation",
+                pch=16, cex=0.2, col.common="red", col.trend="blue", col.tagwise="black"))
   dev.off()
 
-  # Interaction contrast (trt_post - placebo_post): genes responding differently
-  # to treatment vs placebo over time (arm x time-point interaction).
+  # To find genes that respond differently to treatment vs placebo
+  # This tests the interaction between arm and time point
+  cat("Fitting model... \n")
   qlf.interaction <- glmQLFTest(fit, contrast = c(0, rep(0, ncol(design) - 3), -1, 1))
   counts_norm     <- edgeR::cpm(y, log = TRUE, prior.count = 3)
   write.csv(rownames_to_column(as.data.frame(counts_norm), var = "gene"),
             file.path(outdir, paste0(cell_type_label, "_countsNorm.csv")),
             row.names = FALSE)
 
-  # Top 5 line plots
+  # Lineplot top5 
+  # plotting was taken out of the functions that are only run once with hardcorded arguments in the upstream implementation
+  cat("Plot top 5 DE genes \n")
   genes     <- rownames(topTags(qlf.interaction))[1:min(5, nrow(topTags(qlf.interaction)))]
   plot_data <- counts_norm[genes, , drop = FALSE] |>
     as.data.frame() |>
@@ -128,7 +147,7 @@ run_edgeR <- function(seurat_obj, cell_type, outdir) {
       stat_summary(geom = "line") +
       facet_wrap(~arm) + theme_bw() + ggtitle(g) + xlab("Visit")
   })
-  pdf(file.path(outdir, paste0(cell_type_label, "_top5_lineplot.pdf")), height = 18, width = 10)
+  pdf(file.path(outdir, paste0(cell_type_label, "_tx_top5.pdf")), height = 18, width = 10)
   print(cowplot::plot_grid(plotlist = spag_plots, nrow = length(genes)))
   dev.off()
 
@@ -141,7 +160,8 @@ run_edgeR <- function(seurat_obj, cell_type, outdir) {
   de$gene <- rownames(de)
   write.csv(de, file.path(outdir, paste0(cell_type_label, "_tx.csv")))
 
-  pdf(file.path(outdir, paste0(cell_type_label, "_volcano.pdf")), height = 12, width = 20)
+  pdf(file.path(outdir, paste0(cell_type_label, "_tx_volcano.pdf")), height = 12, width = 20)
+  cat("Plot Volcano plot \n")
   print(ggplot(de, aes(x = logFC, y = -log10(FDR), color = significance, label = gene)) +
     geom_point(alpha = 0.8, size = 2) +
     scale_color_manual(values = c("Upregulated"   = "firebrick",
@@ -155,11 +175,14 @@ run_edgeR <- function(seurat_obj, cell_type, outdir) {
   de
 }
 
+# the upstream pipelines saves the results and then loads them again, we keep everything in memory to minimize I/O operations (can be slow and there is a risk the file has been touched by another process meanwhile)
 results <- lapply(cell_types, function(ct) run_edgeR(s, ct, outdir))
 results <- Filter(Negate(is.null), results)
 
+
 if (length(results) > 0) {
   merged <- dplyr::bind_rows(results)
+  # remove unnecessary columns
   merged <- merged[, 1:7]
   colnames(merged)[1] <- "gene"
   write.csv(merged, file.path(outdir, "summary_DE_analysis.csv"))

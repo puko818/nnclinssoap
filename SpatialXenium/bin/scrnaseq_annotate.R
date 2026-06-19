@@ -1,4 +1,6 @@
 #!/usr/bin/env Rscript
+
+# unused package have been trimmed
 library(yaml)
 library(SingleR)
 library(celldex)
@@ -12,6 +14,7 @@ library(Azimuth)
 
 `%||%` <- function(a, b) if (!is.null(a) && !is.na(a) && a != "") a else b
 
+# params loaded from command line instead of yml
 parse_args <- function() {
   raw <- commandArgs(trailingOnly = TRUE)
   result <- list()
@@ -41,6 +44,7 @@ annotation_method <- args$annotation_method %||% "Azimuth"
 azimuth_ref       <- args$azimuth_ref %||% "pbmcref"
 singler_ref       <- args$singler_ref %||% "dice"
 
+# no warning if the dir exists
 dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
 
 cat("Loading Seurat object:", input_rds, "\n")
@@ -48,20 +52,25 @@ s <- readRDS(input_rds)
 
 # SingleR ----------------------------------------------------------------------
 if (annotation_method == "SingleR") {
+  # JoinLayers not called in the upstream implementation - TODO test if it is needed here, Azimuth has it
   s <- JoinLayers(s)
   Idents(s) <- s$seurat_clusters
 
   # Log fold-change distribution (cluster 0 vs 1) to inform the marker threshold
   logfc_dist <- FindMarkers(s, ident.1 = 0, ident.2 = 1, logfc.threshold = 0.1, min.pct = 0.01)
+
+  # Plot the distribution of log fold changes
   pdf(file.path(outdir, "lfc_distribution.pdf"), width = 12, height = 10)
   print(ggplot(logfc_dist, aes(x = avg_log2FC)) +
     geom_histogram(bins = 50) +
     labs(title = "Distribution of Log Fold Changes", x = "Log Fold Change", y = "Frequency"))
   dev.off()
 
+  #Change lofc.threshold according to the plot
   rna.markers <- FindAllMarkers(s, logfc.threshold = log(1), only.pos = TRUE, min.diff.pct = 0.3)
   write.csv(rna.markers, file.path(outdir, "findall_markers_singleR.csv"))
 
+  # Define a named list mapping reference names to their corresponding functions
   ref_options <- list(
     dice                      = celldex::DatabaseImmuneCellExpressionData,
     hpca                      = celldex::HumanPrimaryCellAtlasData,
@@ -71,14 +80,18 @@ if (annotation_method == "SingleR") {
     mouse_rnaseq              = celldex::MouseRNAseqData,
     novershtern_hematopoietic = celldex::NovershternHematopoieticData
   )
+
+  # Get reference data
   ref_fn <- ref_options[[singler_ref]]
-  if (is.null(ref_fn)) stop("Unrecognised singleR reference: ", singler_ref)
+  if (is.null(ref_fn)) stop(paste("Error: Reference database", singler_ref, "not recognized."))
   ref <- ref_fn()
 
+  # Run SingleR
   object_counts <- GetAssayData(s, assay = "RNA", layer = "data")
   pred.fine <- SingleR(test = object_counts, ref = ref, labels = ref$label.fine)
   pred.main <- SingleR(test = object_counts, ref = ref, labels = ref$label.main)
 
+  # Add SingleR annotations to the Seurat object meta data
   s <- AddMetaData(s, metadata = data.frame(
     fine_labels = pred.fine$labels,
     main_labels = pred.main$labels,
@@ -90,12 +103,14 @@ if (annotation_method == "SingleR") {
         ggtitle(paste0("SingleR labels: ", singler_ref)))
   dev.off()
 
-  pdf(file.path(outdir, "pred_scores_heatmap.pdf"), width = 12, height = 8)
+
+  # Annotation diagnostics 
+  pdf(file.path(outdir, "pred_scores_singleR_heatmap-mainlabels.pdf"), width = 12, height = 8)
   plotScoreHeatmap(pred.main)
   dev.off()
 
-  pdf(file.path(outdir, "delta_distribution.pdf"), width = 16, height = 10)
-  print(plotDeltaDistribution(pred.main))
+  pdf(file.path(outdir, "delta_distribution_singleR.pdf"), width = 16, height = 10)
+  print(plotDeltaDistribution(pred.main) + ggtitle("singleR labels.main"))
   dev.off()
 
   # Summary stats for scoring (only defined in SingleR branch)
@@ -105,7 +120,11 @@ if (annotation_method == "SingleR") {
   avg_df     <- aggregate(score ~ label, data = df, FUN = mean)
   summary_df <- merge(avg_df, cell_count, by = "label")
   write.csv(summary_df, file.path(outdir, "annotation_scores.csv"))
+  
+  iqr_prediction_score <- IQR(df$score)
+  cat("IQR of prediction scores:", iqr_prediction_score, "\n")
 
+  # IQR boxplot generated only for Azimuth in the upstream code
   pdf(file.path(outdir, "IQR_boxplot.pdf"), width = 20, height = 10)
   print(ggplot(df, aes(x = label, y = score)) +
     geom_boxplot() +
@@ -113,16 +132,25 @@ if (annotation_method == "SingleR") {
     theme(axis.text.x = element_text(angle = 30, hjust = 1)))
   dev.off()
 
+  pdf(file.path(outdir, "boxplot_Labelcount_scores.pdf"), width = 18, height = 10)
+  print(wrap_plots(
+    ggplot(df, aes(x = "", y = score)) + geom_boxplot() + labs(x = "", y = "Prediction Score") + ggtitle("Label Scores"),
+    ggplot(cell_count, aes(x = "", y = count)) + geom_boxplot() + labs(x = "", y = "Cell count") + ggtitle("Cell count"),
+    ncol = 2
+  ))
+  dev.off()
+
 # Azimuth ----------------------------------------------------------------------
 } else if (annotation_method == "Azimuth") {
   s <- JoinLayers(s)
+  # reference hardcoded in the upstream implementation
   s <- RunAzimuth(s, reference = azimuth_ref, assay = "RNA", query.modality = "RNA")
 
-  pdf(file.path(outdir, "Azimuth_umaps.pdf"), width = 20, height = 10)
+  pdf(file.path(outdir, "Azimuth_umaps_3levels.pdf"), width = 20, height = 10)
   print(wrap_plots(
-    DimPlot(s, group.by = "predicted.celltype.l1", label = TRUE, label.size = 3) + NoLegend(),
-    DimPlot(s, group.by = "predicted.celltype.l2", label = TRUE, label.size = 3) + NoLegend(),
-    DimPlot(s, group.by = "predicted.celltype.l3", label = TRUE, label.size = 3) + NoLegend(),
+    DimPlot(s, group.by = "predicted.celltype.l1", label = TRUE, label.size = 3) + NoLegend() + ggtitle("Pbmcref 1"),
+    DimPlot(s, group.by = "predicted.celltype.l2", label = TRUE, label.size = 3) + NoLegend() + ggtitle("Pbmcref 2"),
+    DimPlot(s, group.by = "predicted.celltype.l3", label = TRUE, label.size = 3) + NoLegend() + ggtitle("Pbmcref 3"),
     ncol = 2
   ))
   dev.off()
@@ -133,15 +161,18 @@ if (annotation_method == "SingleR") {
                   label = TRUE, label.size = 3) + NoLegend())
     dev.off()
   }
-
+  
+  ## Summary stats ---------------------------------------------------------------
   df         <- data.frame(label = s$predicted.celltype.l2, score = s$predicted.celltype.l2.score)
   cell_count <- data.frame(table(s$predicted.celltype.l2))
   colnames(cell_count) <- c("label", "count")
+  
   avg_df     <- aggregate(score ~ label, data = df, FUN = mean)
+  
   summary_df <- merge(avg_df, cell_count, by = "label")
   write.csv(summary_df, file.path(outdir, "annotation_scores.csv"))
 
-  pdf(file.path(outdir, "score_violin.pdf"), width = 20, height = 10)
+  pdf(file.path(outdir, "score_l2_vln.pdf"), width = 20, height = 10)
   print(VlnPlot(s, features = "predicted.celltype.l2.score") + NoLegend())
   dev.off()
 
