@@ -1,8 +1,10 @@
+// include all newly created processes
 include { SCRNASEQ_PREPROCESS } from '../modules/local/scrnaseq_preprocess'
 include { SCRNASEQ_INTEGRATE  } from '../modules/local/scrnaseq_integrate'
 include { SCRNASEQ_ANNOTATE   } from '../modules/local/scrnaseq_annotate'
 include { SCRNASEQ_DE         } from '../modules/local/scrnaseq_de'
 
+// and chain them together
 workflow SCRNASEQ {
     take:
     samplesheet    // channel: [ [meta], sample_path ]
@@ -11,7 +13,7 @@ workflow SCRNASEQ {
 
     main:
 
-    // 1. Per-sample preprocessing — runs in parallel across all samples
+    // 1. Per-sample preprocessing — runs in parallel
     SCRNASEQ_PREPROCESS(samplesheet)
 
     // 2. Collect all per-sample RDS files and integrate

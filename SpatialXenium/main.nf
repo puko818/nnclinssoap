@@ -48,12 +48,7 @@ workflow NFCORE_SPATIALXENIUM {
     main:
 
     // Resolve label column and DE annotation column.
-    // In integrated mode (scrnaseq_input set), the reference RDS is always produced by the
-    // pipeline so column names are fixed by annotation_method. LABEL_TRANSFER always uses the
-    // top-level column (l1 / main_labels). DE honours params.de_annotation for Azimuth so the
-    // user can group pseudo-bulk at a finer resolution (e.g. predicted.celltype.l2); SingleR
-    // only emits 'main_labels', so predicted.celltype.* is not available there.
-    // In manual mode (reference_rds), use single_cell_label_col as-is.
+    // In integrated mode (scrnaseq_input set), the reference RDS is always produced by the pipeline so column names are fixed by annotation_method -> predicted.celltype.* for azimuth and main_labels for SingleR
     def label_col = params.single_cell_label_col
     def de_annotation_col = params.de_annotation
     if (params.scrnaseq_input) {
@@ -69,7 +64,7 @@ workflow NFCORE_SPATIALXENIUM {
             de_annotation_col = 'main_labels'
         }
     }
-
+    // presence of this parameter activates the now built-in scRNAseq part of the workflow
     if (params.scrnaseq_input) {
         // Parse the tab-separated scrnaseq samplesheet into [ meta, sample_path ] tuples
         ch_scrnaseq = Channel

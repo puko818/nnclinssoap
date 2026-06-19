@@ -315,7 +315,7 @@ s <- RunUMAP(s, dims = 1:pcs, verbose = FALSE)
 
 head(Idents(s), 5)
 
-pdf(file = paste0(resultspath, "Dimplot_umap_scCustom.pdf"), width = 12, height = 8)
+pdf(file.path(qc_dir, "Dimplot_umap_scCustom.pdf"), width = 12, height = 8)
 print(DimPlot(s, reduction = "umap", group.by = "ident", label = TRUE, repel = TRUE, ncol = 2))
 dev.off()
 
