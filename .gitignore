@@ -47,3 +47,8 @@ SpatialXenium/test_results_binary/
 
 # AWS ephemeral state (contains instance IDs / IPs — not for version control)
 aws_state.json
+
+# Claude Code / AI-agent local state and instructions — not for version control
+.claude/
+CLAUDE.md
+.agent.md
